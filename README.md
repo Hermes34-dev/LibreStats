@@ -6,6 +6,8 @@
 
 <p align="center"><strong>A statistics package for LibreOffice Calc, written in pure Python.</strong></p>
 
+⚠️⚠️⚠️ THIS IS A WORK IN PROGRESS - It is not yet ready to use and has very limited features. USE AT YOUR OWN DISGRESSION ⚠️⚠️⚠️
+
 LibreStats adds a **LibreStats** menu to Calc with dialog-driven statistical tools, in the spirit of Excel statistics add-ins. Each analysis writes its results to a new sheet: a readable report with the parameters used, the method references and notes on assumptions. You can rerun it, check it and cite it.
 
 The first module is **Data Preparation**: outlier detection, missing-data diagnostics and imputation, transformations and scaling, compositional log-ratios, and coding and recoding of variables.
