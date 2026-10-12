@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="LibreStats_LOGO.svg" alt="LibreStats logo" width="200">
+  <img src="LibreStats_LOGO.png" alt="LibreStats logo" width="200">
 </p>
 
 <h1 align="center">LibreStats</h1>
