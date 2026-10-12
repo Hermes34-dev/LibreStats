@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<oor:component-data xmlns:oor="http://openoffice.org/2001/registry"
+                    xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                    oor:name="Addons" oor:package="org.openoffice.Office">
+  <node oor:name="AddonUI">
+    <!-- Top-level "LibreStats" menu, shown only in Calc.
+         "service:" URLs create the named UNO service and call trigger("<command>"). -->
+    <node oor:name="OfficeMenuBar">
+      <node oor:name="org.librestats.menu" oor:op="replace">
+        <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">LibreStats</value></prop>
+        <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+        <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+        <node oor:name="Submenu">
+          <node oor:name="m01" oor:op="replace">
+            <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Data Preparation</value></prop>
+            <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+            <node oor:name="Submenu">
+              <node oor:name="m01" oor:op="replace">
+                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?outliers</value></prop>
+                <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Outliers...</value></prop>
+                <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+                <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+              </node>
+              <node oor:name="m02" oor:op="replace">
+                <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Missing Data</value></prop>
+                <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+                <node oor:name="Submenu">
+              <node oor:name="m01" oor:op="replace">
+                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?missingDiagnose</value></prop>
+                <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Diagnostics...</value></prop>
+                <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+                <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+              </node>
+              <node oor:name="m02" oor:op="replace">
+                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?missingImpute</value></prop>
+                <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Impute Missing Values...</value></prop>
+                <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+                <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+              </node>
+                </node>
+              </node>
+              <node oor:name="m03" oor:op="replace">
+                <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Transform and Scale</value></prop>
+                <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+                <node oor:name="Submenu">
+              <node oor:name="m01" oor:op="replace">
+                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?transform</value></prop>
+                <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Transform...</value></prop>
+                <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+                <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+              </node>
+              <node oor:name="m02" oor:op="replace">
+                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?scale</value></prop>
+                <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Scale...</value></prop>
+                <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+                <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+              </node>
+              <node oor:name="m03" oor:op="replace">
+                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?logratio</value></prop>
+                <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Compositional Log-ratios...</value></prop>
+                <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+                <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+              </node>
+                </node>
+              </node>
+              <node oor:name="m04" oor:op="replace">
+                <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Coding</value></prop>
+                <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+                <node oor:name="Submenu">
+              <node oor:name="m01" oor:op="replace">
+                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?dummies</value></prop>
+                <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Dummy Variables...</value></prop>
+                <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+                <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+              </node>
+              <node oor:name="m02" oor:op="replace">
+                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?presence</value></prop>
+                <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Presence/Absence...</value></prop>
+                <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+                <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+              </node>
+              <node oor:name="m03" oor:op="replace">
+                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?bins</value></prop>
+                <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Discretize into Bins...</value></prop>
+                <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+                <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+              </node>
+              <node oor:name="m04" oor:op="replace">
+                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?recode</value></prop>
+                <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Recode Categories...</value></prop>
+                <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+                <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+              </node>
+              <node oor:name="m05" oor:op="replace">
+                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?ranks</value></prop>
+                <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Ranks and Normal Scores...</value></prop>
+                <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+                <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+              </node>
+                </node>
+              </node>
+            </node>
+          </node>
+        </node>
+      </node>
+    </node>
+  </node>
+</oor:component-data>

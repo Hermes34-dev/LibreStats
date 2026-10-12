@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<description xmlns="http://openoffice.org/extensions/description/2006"
+             xmlns:d="http://openoffice.org/extensions/description/2006"
+             xmlns:lo="http://libreoffice.org/extensions/description/2011"
+             xmlns:xlink="http://www.w3.org/1999/xlink">
+  <identifier value="org.librestats"/>
+  <version value="0.3.0"/>
+  <display-name>
+    <name lang="en">LibreStats</name>
+  </display-name>
+  <dependencies>
+    <lo:LibreOffice-minimal-version d:name="LibreOffice 26.8" value="26.8"/>
+  </dependencies>
+</description>

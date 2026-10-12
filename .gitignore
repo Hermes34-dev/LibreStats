@@ -1,0 +1,26 @@
+# Development-only Python environment (numpy, scipy, ... for reference tests)
+.venv-dev/
+.venv/
+venv/
+
+# Build output (librestats.oxt, test logs)
+librestats/build/
+
+# Python caches
+__pycache__/
+*.py[cod]
+
+# Logs (e.g. tools/dixon_run.log from the Dixon table generator)
+*.log
+
+# Desktop / editor files
+.directory
+.DS_Store
+Thumbs.db
+*~
+*.swp
+.vscode/
+.idea/
+
+# LibreOffice lock files
+.~lock.*#
