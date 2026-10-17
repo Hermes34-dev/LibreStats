@@ -1,4 +1,4 @@
-"""Probability distributions in pure Python (Student's t, chi-square).
+"""Probability distributions in pure Python (Student's t, chi-square, F, normal).
 
 Built on the regularized incomplete beta and gamma functions, evaluated with
 continued fractions / series as in Press et al., Numerical Recipes (3rd ed.),
@@ -166,6 +166,21 @@ def chi2_isf(p, df):
     if not 0.0 < p < 1.0:
         raise ValueError("p must be in (0, 1)")
     return _invert_decreasing(lambda x: chi2_sf(x, df), p)
+
+
+# --- F ------------------------------------------------------------------------
+
+def f_sf(x, df1, df2):
+    """Upper tail probability P(F > x) for the F distribution with (df1, df2) df."""
+    if df1 <= 0 or df2 <= 0:
+        raise ValueError("df must be positive")
+    if x <= 0:
+        return 1.0
+    return betainc(0.5 * df2, 0.5 * df1, df2 / (df2 + df1 * x))
+
+
+def f_cdf(x, df1, df2):
+    return 1.0 - f_sf(x, df1, df2)
 
 
 # --- Standard normal ------------------------------------------------------------

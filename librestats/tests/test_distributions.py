@@ -65,6 +65,15 @@ class TestChi2(unittest.TestCase):
                 self.assertLess(rel(d.chi2_isf(p, df), stats.chi2.isf(p, df)), 1e-9, (p, df))
 
 
+class TestF(unittest.TestCase):
+    def test_sf(self):
+        for df1 in (1, 2, 4, 9, 30):
+            for df2 in (1, 3, 10, 57, 500):
+                for x in (0.0, 0.05, 0.5, 1.0, 2.7, 8.0, 40.0):
+                    ref = stats.f.sf(x, df1, df2)
+                    self.assertLess(rel(d.f_sf(x, df1, df2), ref), 1e-9, (x, df1, df2))
+
+
 class TestNormal(unittest.TestCase):
     def test_cdf_and_ppf(self):
         for x in (-30, -8, -2.5, -0.3, 0, 0.7, 3, 8):

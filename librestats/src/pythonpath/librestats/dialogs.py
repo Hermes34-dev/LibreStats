@@ -93,6 +93,21 @@ def picked(dialog, name, items):
     return items[pos][0] if pos >= 0 else items[0][0]
 
 
+def number(text, what):
+    """Parse a number typed in a dialog (accepts a decimal comma); None if empty."""
+    text = text.strip()
+    if not text:
+        return None
+    try:
+        return float(text.replace(",", "."))
+    except ValueError:
+        raise ValueError(f"{what} must be a number (got '{text}').") from None
+
+
+def radio_choice(dialog, names):
+    return next(n for n in names if checked(dialog, n))
+
+
 def initial_range(doc):
     """Range text from the current selection and a guess whether row 1 holds names."""
     text = calc.selection_text(doc)

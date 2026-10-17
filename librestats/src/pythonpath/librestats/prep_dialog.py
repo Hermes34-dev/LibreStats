@@ -29,21 +29,6 @@ def _common(dialog, settings):
                        d.checked(dialog, "outBeside"), settings)
 
 
-def _number(text, what):
-    """Parse a number typed in a dialog (accepts a decimal comma); None if empty."""
-    text = text.strip()
-    if not text:
-        return None
-    try:
-        return float(text.replace(",", "."))
-    except ValueError:
-        raise ValueError(f"{what} must be a number (got '{text}').") from None
-
-
-def _radio_choice(dialog, names):
-    return next(n for n in names if d.checked(dialog, n))
-
-
 def _run(ctx, doc, parent, b, title, read):
     """Create and execute; a ValueError from read() is shown and the dialog reopened."""
     dialog = b.create(parent)
@@ -89,11 +74,11 @@ def show_transform(ctx, doc, parent):
     def read(dlg):
         offset = d.picked(dlg, "offset", OFFSETS)
         if offset == "custom":
-            offset = _number(dlg.getControl("offsetValue").getText(), "The custom offset")
+            offset = d.number(dlg.getControl("offsetValue").getText(), "The custom offset")
             if offset is None:
                 raise ValueError("Enter a custom offset value.")
-        lam = _number(dlg.getControl("lambda").getText(), "Lambda")
-        return _common(dlg, {"method": _radio_choice(dlg, methods),
+        lam = d.number(dlg.getControl("lambda").getText(), "Lambda")
+        return _common(dlg, {"method": d.radio_choice(dlg, methods),
                              "base": d.picked(dlg, "base", BASES), "offset": offset,
                              "lambda": "" if lam is None else lam,
                              "percent": d.checked(dlg, "percent"),
@@ -119,7 +104,7 @@ def show_scale(ctx, doc, parent):
     b.output_choice(112)
     b.ok_cancel(142)
     return _run(ctx, doc, parent, b, title,
-                lambda dlg: _common(dlg, {"method": _radio_choice(dlg, methods)}))[1]()
+                lambda dlg: _common(dlg, {"method": d.radio_choice(dlg, methods)}))[1]()
 
 
 # --- Compositional -------------------------------------------------------------------
@@ -137,7 +122,7 @@ def show_logratio(ctx, doc, parent):
     b.output_choice(114)
     b.ok_cancel(156)
     return _run(ctx, doc, parent, b, title, lambda dlg: _common(dlg, {
-        "method": _radio_choice(dlg, ("clr", "ilr")),
+        "method": d.radio_choice(dlg, ("clr", "ilr")),
         "zeros": "replace" if d.checked(dlg, "replace") else "error"}))[1]()
 
 
@@ -166,7 +151,7 @@ def show_presence(ctx, doc, parent):
     b.ok_cancel(128)
 
     def read(dlg):
-        threshold = _number(dlg.getControl("threshold").getText(), "The threshold")
+        threshold = d.number(dlg.getControl("threshold").getText(), "The threshold")
         return _common(dlg, {"threshold": 0.0 if threshold is None else threshold,
                              "empty_absent": d.checked(dlg, "emptyAbsent")})
 
@@ -186,7 +171,7 @@ def show_bins(ctx, doc, parent):
     b.output_choice(114)
     b.ok_cancel(142)
     dialog, go = _run(ctx, doc, parent, b, title, lambda dlg: _common(dlg, {
-        "method": _radio_choice(dlg, methods), "k": d.picked(dlg, "k", K_BINS)}))
+        "method": d.radio_choice(dlg, methods), "k": d.picked(dlg, "k", K_BINS)}))
     d.select(dialog, "k", K_BINS, 4)
     return go()
 

@@ -6,13 +6,11 @@
 
 <p align="center"><strong>A statistics package for LibreOffice Calc, written in pure Python.</strong></p>
 
-⚠️⚠️⚠️ THIS IS A WORK IN PROGRESS - It is not yet ready to use and has very limited features. USE AT YOUR OWN DISGRESSION ⚠️⚠️⚠️
-
 LibreStats adds a **LibreStats** menu to Calc with dialog-driven statistical tools, in the spirit of Excel statistics add-ins. Each analysis writes its results to a new sheet: a readable report with the parameters used, the method references and notes on assumptions. You can rerun it, check it and cite it.
 
-The first module is **Data Preparation**: outlier detection, missing-data diagnostics and imputation, transformations and scaling, compositional log-ratios, and coding and recoding of variables.
+The first module is **Data Preparation**: outlier detection, missing-data diagnostics and imputation, transformations and scaling, compositional log-ratios, and coding and recoding of variables. The second, **Data Visualization**, draws charts with Calc's own chart engine; so far a histogram and a normal Q-Q plot. **Assumption Checks** tests normality (Shapiro-Wilk) and equality of variances (Levene / Brown-Forsythe) before groups are compared.
 
-> **Status:** early development (v0.3.0). Developed and tested on Linux with LibreOffice 26.8. Not yet tested on Windows or macOS.
+> **Status:** early development (v0.6.0). Developed and tested on Linux with LibreOffice 26.8. Not yet tested on Windows or macOS.
 
 ---
 
@@ -26,6 +24,8 @@ The first module is **Data Preparation**: outlier detection, missing-data diagno
 | **Scaling** | Centring, autoscaling (z-score), range 0–1, Pareto (van den Berg et al., 2006) |
 | **Compositional data** | CLR and ILR (pivot coordinates) log-ratio transforms, with optional zero replacement (Aitchison, 1982) |
 | **Coding** | Dummy variables (one-hot), presence/absence, discretisation into bins (equal width, quantiles, optimal 1-D k-means), recoding and merging categories, ranks, normal scores (Blom, van der Waerden, Tukey, Rankit) |
+| **Assumption checks** | Shapiro-Wilk normality test (Royston's AS R94, n = 3–5000), Levene's test of equal variances in the Brown-Forsythe (median) or original (mean) version; samples as columns or as values plus group labels |
+| **Charts** | Histogram: bins by Sturges' rule, a number of bins or a bin width, optional range, count or percent, as a native Calc column chart with custom titles and bar colour; normal Q-Q plot (Blom, van der Waerden, Tukey or Rankit positions) with a quartile or mean/SD reference line, per column or group, as an XY chart |
 
 Across all tools:
 
@@ -101,6 +101,9 @@ project_python_calc/
     │       ├── transform.py        # transformations, scaling, ranks, normal scores
     │       ├── compositional.py    # CLR, ILR, zero replacement
     │       ├── coding.py           # dummies, bins, recoding
+    │       ├── histogram.py        # histogram binning
+    │       ├── qq.py               # normal Q-Q plot coordinates and reference lines
+    │       ├── assumptions.py      # Shapiro-Wilk, Levene / Brown-Forsythe
     │       ├── *_calc.py           # read ranges, run analyses, write report sheets
     │       ├── *_dialog.py, dialogs.py   # dialogs
     │       └── calc.py             # Calc helpers
@@ -108,7 +111,7 @@ project_python_calc/
     └── tools/                      # Dixon table generator, Little's test cross-check
 ```
 
-The statistical modules (`distributions`, `linalg`, `outliers`, `missing`, `transform`, `compositional`, `coding`) contain no LibreOffice code. You can import and test them with any Python 3.
+The statistical modules (`distributions`, `linalg`, `outliers`, `missing`, `transform`, `compositional`, `coding`, `histogram`, `qq`, `assumptions`) contain no LibreOffice code. You can import and test them with any Python 3.
 
 ---
 
@@ -124,7 +127,7 @@ Unit tests compare the pure-Python methods with reference libraries. Those libra
 python3 -m venv .venv-dev
 .venv-dev/bin/pip install numpy scipy scikit-learn pandas scikit-bio
 cd librestats
-../.venv-dev/bin/python -m unittest discover -s tests -p "test_[mdotc]*.py"
+../.venv-dev/bin/python -m unittest discover -s tests -p "test_[mdotchaq]*.py"
 ```
 
 The integration test starts a headless LibreOffice, runs every tool through the installed extension and checks the sheets it produces:
@@ -147,7 +150,7 @@ cd librestats
 
 | Method | Reference |
 |---|---|
-| t, χ², normal distributions | scipy, relative error < 10⁻⁹ |
+| t, χ², F, normal distributions | scipy, relative error < 10⁻⁹ |
 | Grubbs critical values | published tables (e.g. G = 2.290 for n = 10, α = 0.05), and an empirical rejection rate of 5% on outlier-free normal data |
 | Dixon critical values | own simulation (20 million samples per n); within 0.005 of published tables |
 | Mahalanobis distance | scipy |
@@ -158,6 +161,10 @@ cd librestats
 | CLR, ILR | scikit-bio |
 | Equal-width / quantile bins, dummies | pandas |
 | 1-D k-means | exhaustive dynamic programming; never worse than scikit-learn `KMeans` |
+| Shapiro-Wilk | scipy `shapiro`, n = 3–5000 on normal, skewed, uniform and heavy-tailed data: W and p within 10⁻¹⁰ |
+| Levene / Brown-Forsythe | scipy `levene` (`center` median and mean), within 10⁻¹⁰; hand-computed example |
+| Q-Q plot | scipy normal quantiles for all four plotting positions; R `qnorm(ppoints(5))`; quartile line as R `qqline` (numpy type-7 percentiles) |
+| Histogram bins | numpy `histogram` (counts, edges, Sturges' k) and hand-counted examples with values on bin edges |
 
 ---
 

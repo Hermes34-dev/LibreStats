@@ -101,6 +101,42 @@
               </node>
             </node>
           </node>
+          <node oor:name="m02" oor:op="replace">
+            <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Data Visualization</value></prop>
+            <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+            <node oor:name="Submenu">
+              <node oor:name="m01" oor:op="replace">
+                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?histogram</value></prop>
+                <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Histogram...</value></prop>
+                <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+                <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+              </node>
+              <node oor:name="m02" oor:op="replace">
+                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?qq</value></prop>
+                <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Normal Q-Q Plot...</value></prop>
+                <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+                <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+              </node>
+            </node>
+          </node>
+          <node oor:name="m03" oor:op="replace">
+            <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Assumption Checks</value></prop>
+            <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+            <node oor:name="Submenu">
+              <node oor:name="m01" oor:op="replace">
+                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?normality</value></prop>
+                <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Normality (Shapiro-Wilk)...</value></prop>
+                <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+                <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+              </node>
+              <node oor:name="m02" oor:op="replace">
+                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?variances</value></prop>
+                <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Equal Variances (Levene / Brown-Forsythe)...</value></prop>
+                <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+                <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+              </node>
+            </node>
+          </node>
         </node>
       </node>
     </node>

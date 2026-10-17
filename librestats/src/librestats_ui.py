@@ -12,6 +12,12 @@ arguments Command, Document, Range, HasLabels and command-specific options:
                               MiceMethod="pmm|norm", M, Iterations, Seed, InPlace, Highlight
   Command="transform", "scale", "logratio", "dummies", "presence", "bins", "recode",
           "ranks"             Beside, plus the lower-case settings listed in prep_calc
+  Command="histogram"         Bins="auto|count|width", K, Width, Min, Max, Percent, Title,
+                              XTitle, YTitle, Color, Beside
+  Command="qq"                GroupRange, Positions="blom|vdw|tukey|rankit",
+                              Line="quartiles|meansd|none", Title, XTitle, YTitle, Color
+  Command="normality"         GroupRange, Alpha
+  Command="variances"         GroupRange, Center="median|mean", Alpha
 
 execute() returns the name of the sheet that was created.
 """
@@ -21,8 +27,9 @@ import traceback
 import unohelper
 from com.sun.star.task import XJob, XJobExecutor
 
-from librestats import (calc, missing, missing_calc, missing_dialog, outliers_calc,
-                        outliers_dialog, prep_calc, prep_dialog)
+from librestats import (assumptions_calc, assumptions_dialog, calc, missing, missing_calc,
+                        missing_dialog, outliers_calc, outliers_dialog, prep_calc, prep_dialog,
+                        viz_calc, viz_dialog)
 
 IMPLEMENTATION_NAME = "org.librestats.HandlerImpl"
 SERVICE_NAMES = ("org.librestats.Handler",)
@@ -36,6 +43,10 @@ COMMANDS = {
 # transformations and coding: same name for menu command and XJob Command
 COMMANDS.update({name: (prep_dialog.DIALOGS[name], prep_calc.RUNNERS[name])
                  for name in prep_calc.RUNNERS})
+COMMANDS.update({name: (viz_dialog.DIALOGS[name], viz_calc.RUNNERS[name])
+                 for name in viz_calc.RUNNERS})
+COMMANDS.update({name: (assumptions_dialog.DIALOGS[name], assumptions_calc.RUNNERS[name])
+                 for name in assumptions_calc.RUNNERS})
 
 
 class LibreStatsHandler(unohelper.Base, XJobExecutor, XJob):
@@ -113,6 +124,40 @@ class LibreStatsHandler(unohelper.Base, XJobExecutor, XJob):
                                          settings={k: v for k, v in args.items()
                                                    if k not in reserved})
             return prep_calc.RUNNERS[command](doc, opts)
+
+        if command == "histogram":
+            def number(key):
+                v = args.get(key)
+                return None if v in (None, "") else float(v)
+
+            opts = viz_calc.HistogramOptions(
+                **common, bins=str(args.get("Bins", "auto")), k=int(args.get("K", 10)),
+                width=number("Width"), min=number("Min"), max=number("Max"),
+                percent=bool(args.get("Percent", False)), title=str(args.get("Title", "")),
+                x_title=str(args.get("XTitle", "")), y_title=str(args.get("YTitle", "")),
+                color=int(args.get("Color", viz_calc.DEFAULT_COLOR)),
+                beside=bool(args.get("Beside", False)))
+            return viz_calc.run_histogram(doc, opts)
+
+        if command == "qq":
+            opts = viz_calc.QQOptions(
+                **common, group_range=str(args.get("GroupRange", "")),
+                positions=str(args.get("Positions", "blom")),
+                line=str(args.get("Line", "quartiles")), title=str(args.get("Title", "")),
+                x_title=str(args.get("XTitle", "")), y_title=str(args.get("YTitle", "")),
+                color=int(args.get("Color", viz_calc.DEFAULT_COLOR)))
+            return viz_calc.run_qq(doc, opts)
+
+        if command in ("normality", "variances"):
+            group = str(args.get("GroupRange", ""))
+            alpha = float(args.get("Alpha", 0.05))
+            if command == "normality":
+                opts = assumptions_calc.NormalityOptions(**common, group_range=group, alpha=alpha)
+            else:
+                opts = assumptions_calc.VarianceOptions(
+                    **common, group_range=group, center=str(args.get("Center", "median")),
+                    alpha=alpha)
+            return assumptions_calc.RUNNERS[command](doc, opts)
 
         raise ValueError(f"Unknown LibreStats command: {command!r}")
 

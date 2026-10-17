@@ -1,6 +1,6 @@
 # LibreStats Documentation
 
-User guide for **LibreStats 0.3.0**, a statistics extension for LibreOffice Calc (26.8 or newer).
+User guide for **LibreStats 0.4.0**, a statistics extension for LibreOffice Calc (26.8 or newer).
 
 ## Contents
 
@@ -19,9 +19,11 @@ User guide for **LibreStats 0.3.0**, a statistics extension for LibreOffice Calc
    - [Discretize into bins](#53-discretize-into-bins)
    - [Recode categories](#54-recode-categories)
    - [Ranks and normal scores](#55-ranks-and-normal-scores)
-6. [Automation (macros)](#automation-macros)
-7. [Limitations](#7-limitations)
-8. [References](#references)
+6. [Data visualization](#6-data-visualization)
+   - [Histogram](#61-histogram)
+7. [Automation (macros)](#automation-macros)
+8. [Limitations](#8-limitations)
+9. [References](#references)
 
 ---
 
@@ -43,6 +45,7 @@ LibreStats ▸ Data Preparation ▸ Outliers…
                                         ▸ Discretize into Bins…
                                         ▸ Recode Categories…
                                         ▸ Ranks and Normal Scores…
+           ▸ Data Visualization ▸ Histogram…
 ```
 
 ### Data layout
@@ -61,6 +64,7 @@ LibreStats ▸ Data Preparation ▸ Outliers…
 | Transform, Scale, Log-ratios, Bins, Ranks | output left empty | treated as missing, reported |
 | Dummy variables, Recode | output left empty | a category like any other |
 | Presence/absence | missing, or absent if chosen | output left empty, reported |
+| Histogram | ignored | ignored, reported |
 
 ### Output
 
@@ -389,6 +393,51 @@ Normal scores give any continuous variable an approximately standard normal dist
 
 ---
 
+## 6. Data visualization
+
+Charts are built with Calc's own chart engine, so they can be edited, copied and saved like any other Calc chart. Each tool writes the table the chart is drawn from, and the chart is linked to it: if you change a number in the table, the chart updates.
+
+### 6.1 Histogram
+
+**LibreStats → Data Visualization → Histogram…**
+
+Counts how many values fall into each of a set of equal-width bins and draws them as a column chart with no gap between the bars.
+
+All selected cells are **pooled into one list of values**, so the selection can be one column or a block of several. Text and empty cells are ignored (the number of text cells is reported). If *First row contains variable names* is ticked, the first row is skipped, and when it holds a single name, that name is used for the automatic titles.
+
+#### Dialog
+
+| Option | Choices | Default |
+|---|---|---|
+| Bins | Automatic (Sturges' rule) / Number of bins / Bin width | automatic |
+| Range | Minimum and maximum; empty = the data's own minimum and maximum | empty |
+| Y axis | Count / Percent | count |
+| Title, X axis title, Y axis title | any text; empty = automatic ("Histogram of *name*", *name* or "Value", "Count" or "Percent") | empty |
+| Bar colour | blue, light blue, green, orange, red, burgundy, grey, black | blue |
+| Output | new sheet "Histogram" / to the right of the input range | new sheet |
+
+#### Bins
+
+With range [min, max] (the data's or your own):
+
+| Choice | Number of bins k | Bin width |
+|---|---|---|
+| Automatic | Sturges (1926): k = ⌈log₂ n⌉ + 1 | (max − min) / k |
+| Number of bins | k as entered | (max − min) / k |
+| Bin width | k = ⌈(max − min) / width⌉ | as entered; the last bin may end beyond max |
+
+- Bins are **half-open intervals [a, b)**: a value exactly on an edge is counted in the bin that **starts** there. The last bin also includes its upper limit, so the maximum is counted. This is the convention of `numpy.histogram`.
+- **All values identical:** a single bin (with *Bin width*, from the value to value + width).
+- **Your own range:** values outside [min, max] are not counted; their number is reported. Percentages are then percentages of the values counted.
+- At most 1000 bins.
+- Sturges' rule assumes roughly normal data and gives few bins for large samples (11 bins for n = 1000). For skewed or large data, try a fixed number of bins or a bin width.
+
+#### Output
+
+A two-column table (*Bin* labelled `a–b`, and *Count* or *Percent*), followed by a summary (values counted, how the bins were chosen, bin width, range, ignored text cells, values outside the range), and a column chart to the right of the table. When writing to the right of the input range, the table starts one empty column after the data; this is refused if those cells are not empty.
+
+---
+
 ## Automation (macros)
 
 Every analysis can be run without a dialog through the UNO service `org.librestats.Handler` (interface `com.sun.star.task.XJob`). `execute()` takes named values and returns the name of the sheet it created.
@@ -417,6 +466,7 @@ Every analysis can be run without a dialog through the UNO service `org.libresta
 | `bins` | `method` = `width`/`quantile`/`kmeans`, `k` (4) |
 | `recode` | `rules` (text, lines separated by newlines) |
 | `ranks` | `ranks` (True), `ties` = `average`/`min`/`max`/`dense`, `scores`, `score_method` = `blom`/`vdw`/`tukey`/`rankit` |
+| `histogram` | `Bins` = `auto`/`count`/`width` (auto), `K` (10), `Width`, `Min`, `Max` (empty = data), `Percent` (False), `Title`, `XTitle`, `YTitle` (empty = automatic), `Color` (RGB number, e.g. `&H004586`), `Beside` (False) |
 
 The tools in sections 4 and 5 also accept `Beside` (True = write next to the input range).
 
@@ -452,7 +502,7 @@ def flag_outliers(*args):
 
 ---
 
-## 7. Limitations
+## 8. Limitations
 
 - **Normality assumptions:** Grubbs, Dixon, Mahalanobis (χ² cutoff), Little's test and MICE's regression models assume (multivariate) normality; this is stated in the reports. Consider transforming skewed data first (section 4.1).
 - **Mahalanobis distance** uses the classical mean and covariance, which outliers themselves can distort (masking). A robust version (MCD; Leys et al., 2018) is not yet available.
@@ -481,6 +531,7 @@ def flag_outliers(*args):
 - Martín-Fernández, J. A., Barceló-Vidal, C., & Pawlowsky-Glahn, V. (2003). Dealing with zeros and missing values in compositional data sets using nonparametric imputation. *Mathematical Geology*, 35(3), 253–278.
 - Rubin, D. B. (1987). *Multiple Imputation for Nonresponse in Surveys*. Wiley.
 - Smithson, M., & Verkuilen, J. (2006). A better lemon squeezer? Maximum-likelihood regression with beta-distributed dependent variables. *Psychological Methods*, 11(1), 54–71.
+- Sturges, H. A. (1926). The choice of a class interval. *Journal of the American Statistical Association*, 21(153), 65–66.
 - Tabachnick, B. G., & Fidell, L. S. (2013). *Using Multivariate Statistics* (6th ed.). Pearson.
 - Troyanskaya, O., Cantor, M., Sherlock, G., Brown, P., Hastie, T., Tibshirani, R., Botstein, D., & Altman, R. B. (2001). Missing value estimation methods for DNA microarrays. *Bioinformatics*, 17(6), 520–525.
 - Tukey, J. W. (1977). *Exploratory Data Analysis*. Addison-Wesley.
