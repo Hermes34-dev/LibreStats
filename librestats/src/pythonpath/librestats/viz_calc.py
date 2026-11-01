@@ -3,11 +3,13 @@
 from dataclasses import dataclass
 
 import uno
-from com.sun.star.awt import Point, Rectangle
+from com.sun.star.awt import Point, Rectangle, Size
+from com.sun.star.beans import PropertyValue
 
 from . import assumptions_calc, calc
 from . import histogram as h
 from . import qq
+from . import surface as sf
 
 DEFAULT_COLOR = 0x004586  # LibreOffice's default chart blue
 LINE_COLOR = 0x333333      # reference lines
@@ -45,6 +47,19 @@ class QQOptions:
     x_title: str = ""
     y_title: str = ""
     color: int = DEFAULT_COLOR
+
+
+@dataclass
+class SurfaceOptions:
+    range_text: str = ""
+    has_labels: bool = True
+    azimuth: float = -60.0      # degrees, turn around the vertical axis
+    elevation: float = 30.0     # degrees above the floor, 0..90
+    mesh_lines: bool = True
+    title: str = ""             # empty titles are filled in automatically
+    x_title: str = ""
+    y_title: str = ""
+    z_title: str = ""
 
 
 def _darker(color, factor=0.6):
@@ -248,4 +263,68 @@ def run_qq(doc, opts):
     return sheet.getName()
 
 
-RUNNERS = {"histogram": run_histogram, "qq": run_qq}
+SURFACE_WIDTH = 16000            # 1/100 mm; the height follows the SVG's aspect ratio
+
+
+def insert_svg(doc, sheet, name, svg, pos, width):
+    """Embed an SVG document as a picture at pos (1/100 mm)."""
+    ctx = uno.getComponentContext()
+    smgr = ctx.ServiceManager
+    stream = smgr.createInstanceWithContext("com.sun.star.io.SequenceInputStream", ctx)
+    stream.initialize((uno.ByteSequence(svg.encode("utf-8")),))
+    provider = smgr.createInstanceWithContext("com.sun.star.graphic.GraphicProvider", ctx)
+    graphic = provider.queryGraphic((PropertyValue(Name="InputStream", Value=stream),))
+    shape = doc.createInstance("com.sun.star.drawing.GraphicObjectShape")
+    sheet.getDrawPage().add(shape)
+    shape.Graphic = graphic
+    shape.setSize(Size(width, round(width * sf.HEIGHT / sf.WIDTH)))
+    shape.setPosition(pos)
+    shape.Name = name
+    shape.Title = name
+    return shape
+
+
+def run_surface(doc, opts):
+    cell_range = calc.resolve_range(doc, opts.range_text)
+    data = calc.used_data(cell_range)
+    if not data or len(data[0]) != 3:
+        raise calc.RangeError("Select exactly three columns: x, y and z (one measurement "
+                              "per row).")
+    names = [str(v).strip() for v in data[0]] if opts.has_labels else ["", "", ""]
+    names = [n or d for n, d in zip(names, ("x", "y", "z"))]
+    surface = sf.build_surface(data[1:] if opts.has_labels else data)
+    x_title = opts.x_title.strip() or names[0]
+    y_title = opts.y_title.strip() or names[1]
+    z_title = opts.z_title.strip() or names[2]
+    title = opts.title.strip() or f"{z_title} by {x_title} and {y_title}"
+    svg = sf.render_svg(surface, opts.azimuth, opts.elevation, title, x_title, y_title,
+                        z_title, opts.mesh_lines)
+
+    table = [[names[0], names[1], f"{names[2]} (mean)", "n"]] + [list(p) for p in surface.points]
+    mesh = (f"grid: {len(surface.tiles)} cells, bilinear between the corners"
+            if surface.mesh == "grid" else
+            f"Delaunay triangulation: {len(surface.tiles)} triangles, linear between the points")
+    info = [["Points plotted", len(surface.points)],
+            ["Surface", mesh],
+            ["View", f"rotation {h.fmt(opts.azimuth)}°, elevation {h.fmt(opts.elevation)}°"],
+            ["Colour scale", "viridis, by height"]]
+    if surface.skipped:
+        info.append(["Rows skipped (not three numbers)", surface.skipped])
+    info += [["Note", n] for n in surface.notes]
+
+    with calc.undo_context(doc, "LibreStats: 3D surface"):
+        sheet = calc.new_sheet(doc, "3D Surface")
+        top = len(info) + 1
+        _write_block(sheet, 0, top, table)
+        sheet.getCellRangeByPosition(0, top, 3, top).CharWeight = calc.BOLD
+        # widths from the table only: the long info texts overflow into the empty cells
+        sheet.getCellRangeByPosition(1, 0, 3, 0).getColumns().OptimalWidth = True
+        _write_block(sheet, 0, 0, info)
+        sheet.getCellRangeByPosition(0, 0, 0, 0).getColumns().OptimalWidth = True
+        insert_svg(doc, sheet, "3D surface", svg, sheet.getCellByPosition(5, 0).Position,
+                   SURFACE_WIDTH)
+    doc.getCurrentController().setActiveSheet(sheet)
+    return sheet.getName()
+
+
+RUNNERS = {"histogram": run_histogram, "qq": run_qq, "surface": run_surface}

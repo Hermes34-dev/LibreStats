@@ -3,7 +3,7 @@
 from . import calc
 from . import dialogs as d
 from .prep_dialog import SCORES
-from .viz_calc import DEFAULT_COLOR, HistogramOptions, QQOptions
+from .viz_calc import DEFAULT_COLOR, HistogramOptions, QQOptions, SurfaceOptions
 
 COLORS = ((DEFAULT_COLOR, "Blue"), (0x729FCF, "Light blue"), (0x579D1C, "Green"),
           (0xFF8000, "Orange"), (0xC9211E, "Red"), (0x7E0021, "Burgundy"),
@@ -140,4 +140,57 @@ def show_qq(ctx, doc, parent):
     return d.run(ctx, doc, parent, dialog, title, read, lambda _: problems.get("msg"))
 
 
-DIALOGS = {"histogram": show_histogram, "qq": show_qq}
+def show_surface(ctx, doc, parent):
+    """Show the dialog; returns SurfaceOptions, or None if cancelled."""
+    title = "LibreStats - 3D Surface Plot"
+    range_text, labels = d.initial_range(doc)
+    defaults = SurfaceOptions()
+    b = d.Builder(ctx, title, 260, 236)
+    b.range_and_labels(range_text, labels)
+    b.label("lblLayout", 10, 38, 240, "Three columns x, y, z; one measurement per row.")
+
+    b.line("lineView", 56, "View (redraw with other angles to see another side)")
+    b.label("lblAzimuth", 10, 68, 85, "Rotation (degrees):")
+    b.edit("azimuth", 100, 68, 40, "-60")
+    b.label("lblElevation", 10, 84, 85, "Elevation (0 to 90):")
+    b.edit("elevation", 100, 84, 40, "30")
+    b.check("meshLines", 10, 100, 240, "Draw the mesh lines between the data points",
+            defaults.mesh_lines)
+
+    b.line("lineChart", 118, "Titles (leave empty for automatic ones)")
+    b.label("lblTitle", 10, 130, 55, "Title:")
+    b.edit("title", 70, 130, 180, "")
+    b.label("lblXTitle", 10, 146, 55, "X axis title:")
+    b.edit("xTitle", 70, 146, 180, "")
+    b.label("lblYTitle", 10, 162, 55, "Y axis title:")
+    b.edit("yTitle", 70, 162, 180, "")
+    b.label("lblZTitle", 10, 178, 55, "Z axis title:")
+    b.edit("zTitle", 70, 178, 180, "")
+    b.label("lblOut", 10, 198, 240, "Output: new sheet with the plotted points and the picture.")
+    b.ok_cancel(216)
+
+    dialog = b.create(parent)
+    problems = {}
+
+    def read(dlg):
+        text = lambda name: dlg.getControl(name).getText()  # noqa: E731
+        opts = SurfaceOptions(
+            range_text=text("range"), has_labels=d.checked(dlg, "labels"),
+            mesh_lines=d.checked(dlg, "meshLines"), title=text("title"),
+            x_title=text("xTitle"), y_title=text("yTitle"), z_title=text("zTitle"))
+        problems.pop("msg", None)
+        try:
+            azimuth = d.number(text("azimuth"), "The rotation")
+            elevation = d.number(text("elevation"), "The elevation")
+            opts.azimuth = defaults.azimuth if azimuth is None else azimuth
+            opts.elevation = defaults.elevation if elevation is None else elevation
+            if not 0 <= opts.elevation <= 90:
+                raise ValueError("The elevation must be between 0 and 90 degrees.")
+        except ValueError as exc:
+            problems["msg"] = str(exc)
+        return opts
+
+    return d.run(ctx, doc, parent, dialog, title, read, lambda _: problems.get("msg"))
+
+
+DIALOGS = {"histogram": show_histogram, "qq": show_qq, "surface": show_surface}

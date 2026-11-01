@@ -16,8 +16,29 @@ arguments Command, Document, Range, HasLabels and command-specific options:
                               XTitle, YTitle, Color, Beside
   Command="qq"                GroupRange, Positions="blom|vdw|tukey|rankit",
                               Line="quartiles|meansd|none", Title, XTitle, YTitle, Color
+  Command="surface"           Azimuth, Elevation, MeshLines, Title, XTitle, YTitle, ZTitle
+                              (Range: three columns x, y, z)
   Command="normality"         GroupRange, Alpha
   Command="variances"         GroupRange, Center="median|mean", Alpha
+  Command="ttestOne"          GroupRange, Mu, Alternative="two-sided|greater|less", Alpha
+  Command="ttestWelch"        GroupRange, Alternative, Alpha
+  Command="ttestPaired"       Alternative, Alpha
+  Command="anovaOneWay", "anovaWelch"   GroupRange, Alpha
+  Command="anovaRM"           Alpha
+  Command="posthocTukey", "posthocGamesHowell"   GroupRange, Alpha
+  Command="posthocDunnett"    GroupRange, Control (empty = first group), Alternative, Alpha
+  Command="posthocDunn"       GroupRange, Adjust="holm|bonferroni|sidak|bh", Alpha
+  Command="doeDesign"         Design="full|fractional|pb|ccd|bbd", Runs (empty = automatic),
+                              CentrePoints, Replicates, Blocks, Randomize, Seed (empty =
+                              random), Responses (comma-separated); Range: the factor table.
+                              Central composite: Alpha="rotatable|orthogonal|face|<number>",
+                              FractionalCube, Inscribed, AxialCentrePoints. Response surface
+                              designs: empty centre points = automatic
+  Command="doeAnalyseScreening"  Range: the design table; Response (empty = first),
+                              Model="2fi|main", Alpha, Charts
+  Command="doeAnalyseRSM"     Range: the design table; Response (empty = first),
+                              Model="quadratic|interaction|linear", Alpha, XFactor, YFactor
+                              (factor names or letters; empty = first two), Charts
 
 execute() returns the name of the sheet that was created.
 """
@@ -27,9 +48,11 @@ import traceback
 import unohelper
 from com.sun.star.task import XJob, XJobExecutor
 
-from librestats import (assumptions_calc, assumptions_dialog, calc, missing, missing_calc,
-                        missing_dialog, outliers_calc, outliers_dialog, prep_calc, prep_dialog,
-                        viz_calc, viz_dialog)
+from librestats import (assumptions_calc, assumptions_dialog, calc, compare_calc,
+                        compare_dialog, doe_calc, doe_dialog, missing, missing_calc,
+                        missing_dialog, outliers_calc, outliers_dialog, posthoc_calc,
+                        posthoc_dialog, prep_calc, prep_dialog, rsm_calc, screening_calc, viz_calc,
+                        viz_dialog)
 
 IMPLEMENTATION_NAME = "org.librestats.HandlerImpl"
 SERVICE_NAMES = ("org.librestats.Handler",)
@@ -47,6 +70,16 @@ COMMANDS.update({name: (viz_dialog.DIALOGS[name], viz_calc.RUNNERS[name])
                  for name in viz_calc.RUNNERS})
 COMMANDS.update({name: (assumptions_dialog.DIALOGS[name], assumptions_calc.RUNNERS[name])
                  for name in assumptions_calc.RUNNERS})
+COMMANDS.update({name: (compare_dialog.DIALOGS[name], compare_calc.RUNNERS[name])
+                 for name in compare_calc.RUNNERS})
+COMMANDS.update({name: (posthoc_dialog.DIALOGS[name], posthoc_calc.RUNNERS[name])
+                 for name in posthoc_calc.RUNNERS})
+COMMANDS.update({name: (doe_dialog.DIALOGS[name], doe_calc.RUNNERS[name])
+                 for name in doe_calc.RUNNERS})
+COMMANDS.update({name: (doe_dialog.DIALOGS[name], screening_calc.RUNNERS[name])
+                 for name in screening_calc.RUNNERS})
+COMMANDS.update({name: (doe_dialog.DIALOGS[name], rsm_calc.RUNNERS[name])
+                 for name in rsm_calc.RUNNERS})
 
 
 class LibreStatsHandler(unohelper.Base, XJobExecutor, XJob):
@@ -148,6 +181,51 @@ class LibreStatsHandler(unohelper.Base, XJobExecutor, XJob):
                 color=int(args.get("Color", viz_calc.DEFAULT_COLOR)))
             return viz_calc.run_qq(doc, opts)
 
+        if command == "doeDesign":
+            def whole(key, default=None):
+                v = args.get(key)
+                return default if v in (None, "") else int(v)
+
+            kind = str(args.get("Design", "full"))
+            alpha = str(args.get("Alpha", "rotatable"))
+            custom = None
+            if alpha not in ("rotatable", "orthogonal", "face"):
+                alpha, custom = "custom", float(alpha)
+            opts = doe_calc.DesignOptions(
+                **common, kind=kind, runs=whole("Runs"),
+                centre_points=whole("CentrePoints", None if kind in ("ccd", "bbd") else 0),
+                axial_centre_points=whole("AxialCentrePoints"),
+                replicates=whole("Replicates", 1), blocks=whole("Blocks", 1),
+                randomize=bool(args.get("Randomize", True)), seed=whole("Seed"),
+                responses=str(args.get("Responses", "Response")), alpha=alpha,
+                custom_alpha=custom, fractional_cube=bool(args.get("FractionalCube", True)),
+                inscribed=bool(args.get("Inscribed", False)))
+            return doe_calc.run_design(doc, opts)
+
+        if command == "doeAnalyseScreening":
+            opts = screening_calc.ScreeningOptions(
+                **common, response=str(args.get("Response", "")),
+                model=str(args.get("Model", "2fi")), alpha=float(args.get("Alpha", 0.05)),
+                charts=bool(args.get("Charts", True)))
+            return screening_calc.run_screening(doc, opts)
+
+        if command == "doeAnalyseRSM":
+            opts = rsm_calc.RSMOptions(
+                **common, response=str(args.get("Response", "")),
+                model=str(args.get("Model", "quadratic")), alpha=float(args.get("Alpha", 0.05)),
+                x_factor=str(args.get("XFactor", "")), y_factor=str(args.get("YFactor", "")),
+                charts=bool(args.get("Charts", True)))
+            return rsm_calc.run_rsm(doc, opts)
+
+        if command == "surface":
+            opts = viz_calc.SurfaceOptions(
+                **common, azimuth=float(args.get("Azimuth", -60.0)),
+                elevation=float(args.get("Elevation", 30.0)),
+                mesh_lines=bool(args.get("MeshLines", True)), title=str(args.get("Title", "")),
+                x_title=str(args.get("XTitle", "")), y_title=str(args.get("YTitle", "")),
+                z_title=str(args.get("ZTitle", "")))
+            return viz_calc.run_surface(doc, opts)
+
         if command in ("normality", "variances"):
             group = str(args.get("GroupRange", ""))
             alpha = float(args.get("Alpha", 0.05))
@@ -158,6 +236,25 @@ class LibreStatsHandler(unohelper.Base, XJobExecutor, XJob):
                     **common, group_range=group, center=str(args.get("Center", "median")),
                     alpha=alpha)
             return assumptions_calc.RUNNERS[command](doc, opts)
+
+        if command in compare_calc.RUNNERS:
+            group = str(args.get("GroupRange", ""))
+            alpha = float(args.get("Alpha", 0.05))
+            if command.startswith("ttest"):
+                opts = compare_calc.TTestOptions(
+                    **common, group_range=group, mu=float(args.get("Mu", 0.0)),
+                    alternative=str(args.get("Alternative", "two-sided")), alpha=alpha)
+            else:
+                opts = compare_calc.AnovaOptions(**common, group_range=group, alpha=alpha)
+            return compare_calc.RUNNERS[command](doc, opts)
+
+        if command in posthoc_calc.RUNNERS:
+            opts = posthoc_calc.PosthocOptions(
+                **common, group_range=str(args.get("GroupRange", "")),
+                alpha=float(args.get("Alpha", 0.05)), control=str(args.get("Control", "")),
+                alternative=str(args.get("Alternative", "two-sided")),
+                adjust=str(args.get("Adjust", "holm")))
+            return posthoc_calc.RUNNERS[command](doc, opts)
 
         raise ValueError(f"Unknown LibreStats command: {command!r}")
 

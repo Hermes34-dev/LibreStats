@@ -117,6 +117,12 @@
                 <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
                 <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
               </node>
+              <node oor:name="m03" oor:op="replace">
+                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?surface</value></prop>
+                <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">3D Surface Plot...</value></prop>
+                <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+                <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+              </node>
             </node>
           </node>
           <node oor:name="m03" oor:op="replace">
@@ -132,6 +138,156 @@
               <node oor:name="m02" oor:op="replace">
                 <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?variances</value></prop>
                 <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Equal Variances (Levene / Brown-Forsythe)...</value></prop>
+                <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+                <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+              </node>
+            </node>
+          </node>
+          <node oor:name="m04" oor:op="replace">
+            <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Comparison Tests</value></prop>
+            <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+            <node oor:name="Submenu">
+              <node oor:name="m01" oor:op="replace">
+                <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">t-Tests</value></prop>
+                <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+                <node oor:name="Submenu">
+              <node oor:name="m01" oor:op="replace">
+                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?ttestOne</value></prop>
+                <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">One-Sample t-Test...</value></prop>
+                <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+                <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+              </node>
+              <node oor:name="m02" oor:op="replace">
+                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?ttestWelch</value></prop>
+                <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Welch's t-Test (Two Samples)...</value></prop>
+                <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+                <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+              </node>
+              <node oor:name="m03" oor:op="replace">
+                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?ttestPaired</value></prop>
+                <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Paired t-Test...</value></prop>
+                <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+                <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+              </node>
+                </node>
+              </node>
+              <node oor:name="m02" oor:op="replace">
+                <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">ANOVA</value></prop>
+                <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+                <node oor:name="Submenu">
+              <node oor:name="m01" oor:op="replace">
+                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?anovaOneWay</value></prop>
+                <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">One-Way ANOVA...</value></prop>
+                <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+                <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+              </node>
+              <node oor:name="m02" oor:op="replace">
+                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?anovaWelch</value></prop>
+                <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Welch's ANOVA...</value></prop>
+                <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+                <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+              </node>
+              <node oor:name="m03" oor:op="replace">
+                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?anovaRM</value></prop>
+                <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Repeated-Measures ANOVA...</value></prop>
+                <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+                <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+              </node>
+                </node>
+              </node>
+              <node oor:name="m03" oor:op="replace">
+                <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Post Hoc Tests</value></prop>
+                <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+                <node oor:name="Submenu">
+              <node oor:name="m01" oor:op="replace">
+                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?posthocTukey</value></prop>
+                <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Tukey HSD...</value></prop>
+                <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+                <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+              </node>
+              <node oor:name="m02" oor:op="replace">
+                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?posthocGamesHowell</value></prop>
+                <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Games-Howell...</value></prop>
+                <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+                <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+              </node>
+              <node oor:name="m03" oor:op="replace">
+                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?posthocDunnett</value></prop>
+                <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Dunnett (Each Group vs Control)...</value></prop>
+                <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+                <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+              </node>
+              <node oor:name="m04" oor:op="replace">
+                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?posthocDunn</value></prop>
+                <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Dunn (after Kruskal-Wallis)...</value></prop>
+                <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+                <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+              </node>
+                </node>
+              </node>
+            </node>
+          </node>
+          <node oor:name="m05" oor:op="replace">
+            <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">DOE / RSM</value></prop>
+            <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+            <node oor:name="Submenu">
+              <node oor:name="m01" oor:op="replace">
+                <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">New Design</value></prop>
+                <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+                <node oor:name="Submenu">
+                  <node oor:name="m01" oor:op="replace">
+                    <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Screening</value></prop>
+                    <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+                    <node oor:name="Submenu">
+                      <node oor:name="m01" oor:op="replace">
+                        <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?doeFull</value></prop>
+                        <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Full Factorial (2 Levels)...</value></prop>
+                        <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+                        <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+                      </node>
+                      <node oor:name="m02" oor:op="replace">
+                        <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?doeFractional</value></prop>
+                        <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Fractional Factorial 2^(k-p)...</value></prop>
+                        <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+                        <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+                      </node>
+                      <node oor:name="m03" oor:op="replace">
+                        <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?doePlackettBurman</value></prop>
+                        <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Plackett-Burman...</value></prop>
+                        <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+                        <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+                      </node>
+                    </node>
+                  </node>
+                  <node oor:name="m02" oor:op="replace">
+                    <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Response Surface</value></prop>
+                    <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+                    <node oor:name="Submenu">
+                      <node oor:name="m01" oor:op="replace">
+                        <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?doeCCD</value></prop>
+                        <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Central Composite (CCD)...</value></prop>
+                        <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+                        <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+                      </node>
+                      <node oor:name="m02" oor:op="replace">
+                        <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?doeBoxBehnken</value></prop>
+                        <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Box-Behnken...</value></prop>
+                        <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+                        <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+                      </node>
+                    </node>
+                  </node>
+                </node>
+              </node>
+              <node oor:name="m02" oor:op="replace">
+                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?doeAnalyseScreening</value></prop>
+                <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Analyse Screening Design...</value></prop>
+                <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+                <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+              </node>
+              <node oor:name="m03" oor:op="replace">
+                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?doeAnalyseRSM</value></prop>
+                <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Analyse Response Surface Design...</value></prop>
                 <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
                 <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
               </node>

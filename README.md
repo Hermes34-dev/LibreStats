@@ -8,9 +8,11 @@
 
 LibreStats adds a **LibreStats** menu to Calc with dialog-driven statistical tools, in the spirit of Excel statistics add-ins. Each analysis writes its results to a new sheet: a readable report with the parameters used, the method references and notes on assumptions. You can rerun it, check it and cite it.
 
-The first module is **Data Preparation**: outlier detection, missing-data diagnostics and imputation, transformations and scaling, compositional log-ratios, and coding and recoding of variables. The second, **Data Visualization**, draws charts with Calc's own chart engine; so far a histogram and a normal Q-Q plot. **Assumption Checks** tests normality (Shapiro-Wilk) and equality of variances (Levene / Brown-Forsythe) before groups are compared.
+The first module is **Data Preparation**: outlier detection, missing-data diagnostics and imputation, transformations and scaling, compositional log-ratios, and coding and recoding of variables. The second, **Data Visualization**, draws charts with Calc's own chart engine (a histogram and a normal Q-Q plot), plus a 3D surface plot drawn as an SVG picture, since Calc has no surface chart. **Assumption Checks** tests normality (Shapiro-Wilk) and equality of variances (Levene / Brown-Forsythe) before groups are compared. **Comparison Tests** compares means: one-sample, Welch and paired t-tests, one-way, Welch and repeated-measures ANOVA, and post hoc tests (Tukey HSD, Games-Howell, Dunnett, Dunn). **DOE / RSM** creates experimental designs: two-level screening designs (full and fractional factorials, Plackett-Burman) and response surface designs (central composite, Box-Behnken), and analyses the results: screening experiments (effects, aliases, Lenth's method, curvature check, Pareto chart and half-normal plot) and response surface experiments (quadratic model, stationary point, optimum, response map and 3D surface).
 
-> **Status:** early development (v0.6.0). Developed and tested on Linux with LibreOffice 26.8. Not yet tested on Windows or macOS.
+> **Status:** early development (v0.14.0). Developed and tested on Linux with LibreOffice 26.8. Not yet tested on Windows or macOS.
+>
+> **DOE / RSM is new and still under testing.** The *DOE / RSM* menu (design of experiments and response surface methodology) is available and checked against published examples, but it has had little use on real experiments so far. Check the design summary before running an experiment, and please report anything unexpected. See [documentation.md](documentation.md), section 9.
 
 ---
 
@@ -25,12 +27,18 @@ The first module is **Data Preparation**: outlier detection, missing-data diagno
 | **Compositional data** | CLR and ILR (pivot coordinates) log-ratio transforms, with optional zero replacement (Aitchison, 1982) |
 | **Coding** | Dummy variables (one-hot), presence/absence, discretisation into bins (equal width, quantiles, optimal 1-D k-means), recoding and merging categories, ranks, normal scores (Blom, van der Waerden, Tukey, Rankit) |
 | **Assumption checks** | Shapiro-Wilk normality test (Royston's AS R94, n = 3–5000), Levene's test of equal variances in the Brown-Forsythe (median) or original (mean) version; samples as columns or as values plus group labels |
-| **Charts** | Histogram: bins by Sturges' rule, a number of bins or a bin width, optional range, count or percent, as a native Calc column chart with custom titles and bar colour; normal Q-Q plot (Blom, van der Waerden, Tukey or Rankit positions) with a quartile or mean/SD reference line, per column or group, as an XY chart |
+| **t-tests** | One-sample, Welch's two-sample (unequal variances) and paired t-tests; two- or one-sided, with confidence intervals and Cohen's d (d, d with averaged variances, d_z) |
+| **ANOVA** | One-way ANOVA with η² and ω²; Welch's ANOVA for unequal variances; repeated-measures ANOVA with Mauchly's test of sphericity, Greenhouse-Geisser, Huynh-Feldt and lower-bound corrections, partial and generalized η² |
+| **Post hoc tests** | Tukey HSD (Tukey-Kramer), Games-Howell, Dunnett's test against a control (two- or one-sided), Dunn's test after Kruskal-Wallis with Holm, Bonferroni, Šidák or Benjamini-Hochberg adjustment; adjusted p-values and simultaneous confidence intervals |
+| **Design of experiments** *(under testing)* | Screening design sheets: full factorial, minimum-aberration fractional factorial 2^(k−p) with resolution, defining relation and alias chains, Plackett-Burman (8–24 runs); centre points, replicates, blocks (by replicate or by confounding interactions), randomised run order with seed; coded and actual levels, text levels, empty response columns; response surface designs: central composite (rotatable, orthogonal-blocking, face-centred or custom α, optional resolution V cube, inscribed) and Box-Behnken (3–7 factors), with uniform-precision centre points, orthogonal blocking, and computed rotatability and degrees of freedom |
+| **Screening analysis** *(under testing)* | Effects table by least squares (effect, coefficient, SE, t, p) with alias chains read from the design, block and centre-point terms, pure error and lack of fit; Lenth's PSE, ME and SME for unreplicated designs; curvature test from centre points; native Pareto chart and labelled half-normal plot. Works on Design sheets from *New Design*, or on any table in the same layout (documentation, section 9.3) |
+| **Response surface analysis** *(under testing)* | Full quadratic (or interaction / linear) model with coefficients, ANOVA by term groups, lack of fit vs pure error, predicted R²; equation in actual units; stationary point with canonical analysis (maximum / minimum / saddle / ridge); exact maximum and minimum within the experimental region; coloured response map and 3D fitted surface. Works on Design sheets from *New Design* (documentation, section 9.4) |
+| **Charts** | Histogram: bins by Sturges' rule, a number of bins or a bin width, optional range, count or percent, as a native Calc column chart with custom titles and bar colour; normal Q-Q plot (Blom, van der Waerden, Tukey or Rankit positions) with a quartile or mean/SD reference line, per column or group, as an XY chart; 3D surface plot of z over x and y from three columns (grid or Delaunay triangulation, viridis colours, adjustable view) as an SVG picture |
 
 Across all tools:
 
 - **No dependencies.** Pure Python using only the standard library, so it runs on the Python bundled with LibreOffice (no numpy or scipy needed).
-- **Verified results.** The methods are checked against R (`naniar`, `outliers`), scipy, scikit-learn, pandas and scikit-bio. See [Verification](#verification).
+- **Verified results.** The methods are checked against R (`naniar`, `outliers`), scipy, statsmodels, scikit-learn, pandas and scikit-bio. See [Verification](#verification).
 - **One undo step per analysis.** Optionally, flagged or imputed cells are highlighted in your data.
 - **Scriptable.** Every analysis can also be run without dialogs from a macro (see [documentation.md](documentation.md#automation-macros)).
 
@@ -41,7 +49,19 @@ See **[documentation.md](documentation.md)** for the full user guide: every dial
 ## Requirements
 
 - **LibreOffice 26.8 or newer** (enforced by the extension)
-- Nothing else. The extension uses LibreOffice's built-in Python.
+- **LibreOffice's Python scripting support.**
+  - **Windows and macOS:** included in the official installers; nothing to do.
+  - **Linux:** distribution packages often ship it separately. If the extension won't install or the LibreStats menu does nothing, install it and restart LibreOffice:
+
+    | Distribution | Package |
+    |---|---|
+    | Debian, Ubuntu, Mint | `libreoffice-script-provider-python` |
+    | Fedora, RHEL | `libreoffice-pyuno` |
+    | openSUSE | `libreoffice-pyuno` |
+    | Arch | included in `libreoffice-fresh` / `libreoffice-still` |
+    | Flatpak, Snap, AppImage, official .deb/.rpm from libreoffice.org | included |
+
+- Nothing else: no numpy, scipy or other Python packages. Every tool, including the 3D surface plot, uses only the Python standard library and LibreOffice itself.
 
 ## Installation
 
@@ -93,25 +113,32 @@ project_python_calc/
     │   ├── Addons.xcu              # LibreStats menu
     │   ├── librestats_ui.py        # UNO component: menu commands and macro interface
     │   └── pythonpath/librestats/  # the package (on sys.path automatically)
-    │       ├── distributions.py    # t, chi-square, normal distributions
+    │       ├── distributions.py    # t, chi-square, F, normal, studentized range, Dunnett
     │       ├── linalg.py           # Cholesky and related matrix routines
     │       ├── outliers.py         # outlier methods
     │       ├── dixon_table.py      # generated Dixon critical values
+    │       ├── doe.py              # screening and response surface designs
+    │       ├── screening.py        # analysis of screening designs, Lenth, curvature
+    │       ├── rsm.py              # quadratic model, canonical analysis, optimum
+    │       ├── ff_table.py         # generated minimum-aberration fraction generators
     │       ├── missing.py          # EM, Little's test, imputation
     │       ├── transform.py        # transformations, scaling, ranks, normal scores
     │       ├── compositional.py    # CLR, ILR, zero replacement
     │       ├── coding.py           # dummies, bins, recoding
     │       ├── histogram.py        # histogram binning
+    │       ├── surface.py          # 3D surface: mesh, projection, SVG
     │       ├── qq.py               # normal Q-Q plot coordinates and reference lines
     │       ├── assumptions.py      # Shapiro-Wilk, Levene / Brown-Forsythe
+    │       ├── compare.py          # t-tests, one-way / Welch / repeated-measures ANOVA
+    │       ├── posthoc.py          # Tukey HSD, Games-Howell, Dunnett, Kruskal-Wallis, Dunn
     │       ├── *_calc.py           # read ranges, run analyses, write report sheets
     │       ├── *_dialog.py, dialogs.py   # dialogs
     │       └── calc.py             # Calc helpers
     ├── tests/                      # unit tests and headless integration test
-    └── tools/                      # Dixon table generator, Little's test cross-check
+    └── tools/                      # Dixon and fractional-factorial table generators, Little's test cross-check
 ```
 
-The statistical modules (`distributions`, `linalg`, `outliers`, `missing`, `transform`, `compositional`, `coding`, `histogram`, `qq`, `assumptions`) contain no LibreOffice code. You can import and test them with any Python 3.
+The statistical modules (`distributions`, `linalg`, `outliers`, `missing`, `transform`, `compositional`, `coding`, `histogram`, `qq`, `surface`, `doe`, `screening`, `rsm`, `assumptions`, `compare`, `posthoc`) contain no LibreOffice code. You can import and test them with any Python 3.
 
 ---
 
@@ -125,9 +152,9 @@ Unit tests compare the pure-Python methods with reference libraries. Those libra
 
 ```bash
 python3 -m venv .venv-dev
-.venv-dev/bin/pip install numpy scipy scikit-learn pandas scikit-bio
+.venv-dev/bin/pip install numpy scipy scikit-learn pandas scikit-bio statsmodels
 cd librestats
-../.venv-dev/bin/python -m unittest discover -s tests -p "test_[mdotchaq]*.py"
+../.venv-dev/bin/python -m unittest discover -s tests -p "test_[!e]*.py"
 ```
 
 The integration test starts a headless LibreOffice, runs every tool through the installed extension and checks the sheets it produces:
@@ -144,6 +171,13 @@ The test can't display dialogs or check that undo removes inserted sheets (headl
 ```bash
 cd librestats
 ../.venv-dev/bin/python tools/make_dixon_table.py 20000000
+```
+
+### Regenerating the fractional factorial table
+
+```bash
+cd librestats
+python3 tools/make_ff_table.py     # exhaustive minimum-aberration search, a few seconds
 ```
 
 ### Verification
@@ -164,7 +198,20 @@ cd librestats
 | Shapiro-Wilk | scipy `shapiro`, n = 3–5000 on normal, skewed, uniform and heavy-tailed data: W and p within 10⁻¹⁰ |
 | Levene / Brown-Forsythe | scipy `levene` (`center` median and mean), within 10⁻¹⁰; hand-computed example |
 | Q-Q plot | scipy normal quantiles for all four plotting positions; R `qnorm(ppoints(5))`; quartile line as R `qqline` (numpy type-7 percentiles) |
+| t-tests | scipy `ttest_1samp`, `ttest_ind(equal_var=False)`, `ttest_rel`: t, df, p and confidence interval for all three alternatives, within 10⁻¹⁰ (CI 10⁻⁸) |
+| One-way ANOVA, Welch's ANOVA | scipy `f_oneway` and statsmodels `anova_oneway(use_var="unequal")`, within 10⁻¹⁰; Welch's ANOVA with 2 groups equals Welch's t² |
+| Repeated-measures ANOVA | statsmodels `AnovaRM` (F, p); Greenhouse-Geisser and Huynh-Feldt ε and Mauchly's W, χ², p against an independent numpy computation from eigenvalues, within 10⁻⁹; 2 conditions equal the paired t² |
+| Studentized range | exact for k = 2 (√2·t) to relative 10⁻⁹ down to p ≈ 10⁻¹⁷⁰; scipy `studentized_range` to 10⁻⁷ where scipy is reliable (p > 10⁻⁶); a brute-force numpy double integral in the far tail (scipy is off by up to 4·10⁻⁴ there); quantiles match scipy to 10⁻⁹ and published tables |
+| Dunnett distribution | exact for one treatment (t); scipy `multivariate_t` CDF with product correlations, one- and two-sided, to 10⁻⁴ (its own accuracy; 10⁻⁸ with 10⁷ points); published critical values (Dunnett, 1955, 1964) |
+| Tukey HSD, Dunnett | scipy `tukey_hsd` (p within 10⁻⁶ relative, CI 10⁻⁸); scipy `dunnett` (randomized quasi-Monte Carlo: p within 2·10⁻⁴) for all three alternatives |
+| Games-Howell | the defining formula with scipy's studentized range (p, CI) |
+| Kruskal-Wallis, Dunn | scipy `kruskal` (with ties) within 10⁻¹⁰; Dunn z and p against an independent numpy implementation; Bonferroni, Šidák, Holm and Benjamini-Hochberg against statsmodels `multipletests`, within 10⁻¹² |
 | Histogram bins | numpy `histogram` (counts, edges, Sturges' k) and hand-counted examples with values on bin edges |
+| 3D surface | scipy `Delaunay` (random points), cocircular designs (CCD, square grid), projection and interpolation identities, SVG validity at all angles |
+| Screening designs | NIST e-Handbook resolutions and 2^(7−3) defining relation; Montgomery Table 8.14 word-length patterns; fresh exhaustive minimum-aberration search; orthogonality of every fraction and Plackett-Burman design; blocking vs Montgomery Table 7.8 |
+| Response surface designs | Box & Hunter (1957) uniform-precision table (all 9 cases), Box & Behnken (1960) run counts; rotatability by prediction variance on spheres (numpy) and moment conditions; orthogonal blocking vs Montgomery's textbook designs and by block-dummy orthogonality; full rank of the quadratic model |
+| Screening analysis | Montgomery Example 6.2 (all 15 effects; Lenth PSE 2.625, ME 6.75, SME 13.70) and 6.7 (curvature); statsmodels OLS (coefficients, SE, p, R²) with blocks, centre points, replicates and missing responses; Lenth vs direct formula; alias chains vs the defining relation |
+| Response surface analysis | Montgomery Example 11.2 (coefficients, lack of fit, stationary point, eigenvalues, equation in actual units); statsmodels OLS with blocks and a missing run (coefficients, SE, p, adjusted and predicted R², group F tests); eigenvalues vs numpy; region optimum vs brute-force grid; exact coding from rounded Design sheets |
 
 ---
 
