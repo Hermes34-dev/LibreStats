@@ -11,9 +11,11 @@ import math
 from dataclasses import dataclass
 
 import uno
-from com.sun.star.awt import Point
+from com.sun.star.awt import Point, Size
 
 from . import calc
+from . import influence
+from .distributions import t_isf
 from . import screening as sc
 from .viz_calc import LINE_SOLID, _add_chart, _axis_titles, _series, \
     _write_block, insert_scatter_chart
@@ -29,6 +31,199 @@ REFERENCES = ["Lenth, R. V. (1989). Technometrics, 31(4), 469-473.",
               "Daniel, C. (1959). Technometrics, 1(4), 311-341.",
               "Montgomery, D. C. (2017). Design and Analysis of Experiments (9th ed.), "
               "chapters 6-8. Wiley."]
+COOK_REFERENCES = ["Cook, R. D. (1977). Technometrics, 19(1), 15-18.",
+                   "Bollen, K. A., & Jackman, R. W. (1990). In J. Fox & J. S. Long (Eds.), "
+                   "Modern Methods of Data Analysis. Sage.",
+                   "Hoaglin, D. C., & Welsch, R. E. (1978). The American Statistician, 32(1), "
+                   "17-22.",
+                   "Weisberg, S. (2014). Applied Linear Regression (4th ed.). Wiley."]
+LEVEL_FORMAT = "0.0%"
+INFLUENCE_SIZE = (14000, 10000)     # 1/100 mm
+INFLUENCE_MIN, INFLUENCE_RANGE = 120, 650   # marker diameter, 1/100 mm
+INFLUENCE_LABELS = 3                         # label the runs with the largest D and |t*|
+WORTH_A_LOOK = 2.0                           # influence plot: |t*| reference line
+REF_GREY = 0x808080
+OUTLIER_ALPHA = 0.05                         # Bonferroni line: two-sided, over all runs
+
+
+def add_diagnostics(add, table, observations, diags, p, df, fmt_y):
+    """Write the per-run diagnostics (influence.py) through the report's add(): twelve
+    columns (A-L). Returns the row index of the table header and the number of runs,
+    for influence_plot()."""
+    n = len(diags)
+    cutoff = influence.leverage_cutoff(n, p)
+    add("Diagnostics per run: outliers, leverage and influence", bold=True, overflow=True)
+    add(f"r = residual / (S sqrt(1 - h)) (internally studentized); t* = r sqrt((n - p - 1) / "
+        f"(n - p - r^2)) (externally studentized, t({df - 1}) for a run that is not an "
+        f"outlier); p Bonferroni = min(1, n p) for testing all {n} runs; Cook's D = "
+        f"r^2 h / (p (1 - h)), p = {p} model terms; F level = F({p}, {df}) probability at D.",
+        overflow=True)
+    lev = (f"high leverage: h > 2p/n = {cutoff:.3g}" if cutoff is not None else
+           "high leverage: not assessed (p/n > 0.5)")
+    add("Flags: outlier = Bonferroni p < 0.05; check = p < 0.05 only; " + lev +
+        "; influential = F level 50% or more (D at or above the median of F).",
+        overflow=True)
+    header = add("Std order" if table.std else "Row", "Observed", "Fitted", "Residual",
+                 "Stud. resid. r", "Leverage h", "Ext. stud. t*", "p (outlier)",
+                 "p Bonferroni", "Cook's D", "F level", "Flags", bold=True)
+    blank = lambda v: "" if v is None else v  # noqa: E731
+    lines, no_cooks, no_external = [], 0, 0
+    for i, d in zip(observations, diags):
+        label = table.std[i] if table.std else i + 2
+        no_cooks += d.cooks is None
+        no_external += d.external is None and d.cooks is not None
+        add(label, d.observed, d.fitted, d.residual, blank(d.studentized), d.leverage,
+            blank(d.external), blank(d.p_outlier), blank(d.p_bonferroni), blank(d.cooks),
+            blank(d.level), ", ".join(d.flags()) if d.cooks is not None else "n/a",
+            fmt=(None, fmt_y, fmt_y, fmt_y, "0.000", "0.000", "0.000", P_FORMAT, P_FORMAT,
+                 "0.0000", LEVEL_FORMAT))
+        line = influence.verdict(f"{label:g}" if isinstance(label, float) else label, d, n, p)
+        if line:
+            lines.append(line)
+    add("Flagged runs (by " + ("standard order" if table.std else "row") + ")" +
+        ("" if lines else ": none"), bold=True, overflow=True)
+    for line in lines:
+        add(line, overflow=True)
+    if cutoff is None:
+        add(f"Warning: p/n = {p}/{n} > 0.5: the model has nearly as many terms as runs, "
+            "so leverage is high everywhere and the 2p/n rule cannot pick out unusual runs.",
+            overflow=True)
+    if df - 1 <= 0:
+        add("Note: the outlier test needs n - p - 1 > 0 (at least 2 residual degrees of "
+            "freedom); t* and its p values are n/a.", overflow=True)
+    elif no_external:
+        add(f"Note: t* is n/a for {no_external} run(s): without that run the other runs "
+            "fit exactly (r^2 = n - p), so its t* is infinite.", overflow=True)
+    if no_cooks:
+        add(f"Note: the diagnostics are n/a for {no_cooks} run(s) with leverage 1 (the model "
+            "cannot be fitted without them) or when the fit is perfect (S = 0).",
+            overflow=True)
+    shown = {i for i, d in enumerate(diags) if d.flags()}
+    for key in (lambda i: diags[i].cooks or 0.0, lambda i: abs(diags[i].external or 0.0)):
+        shown |= set(sorted(range(n), key=key, reverse=True)[:INFLUENCE_LABELS])
+    return header, n, cutoff, sorted(shown), p, df
+
+
+def influence_plot(doc, sheet, header, n, cutoff, labelled, p, df, model_name="",
+                   size=INFLUENCE_SIZE, greyscale=False):
+    """Native XY chart of the diagnostics table: leverage (x) against t* (y), marker
+    area proportional to Cook's D. The flagged runs and those with the largest D and
+    |t*| are labelled with their run (design points often share a leverage, so labels
+    on every point would pile up). Dashed reference lines: |t*| = 2 ("worth a look"),
+    +- the Bonferroni critical t (two-sided 0.05 over all n runs, n - p - 1 df) and
+    h = 2p/n; their end points are written in a small table (column N) and the chart
+    is placed right of it, below any chart or picture already in that area."""
+    data = sheet.getCellRangeByPosition(5, header, 6, header + n)       # h, t*
+    labels = [sheet.getCellByPosition(0, header + 1 + i).getString() for i in range(n)]
+    cooks = [sheet.getCellByPosition(9, header + 1 + i) for i in range(n)]
+    cooks = [c.getValue() if c.getType().value == "VALUE" else None for c in cooks]
+    if not any(c is not None for c in cooks):
+        return None
+    ts = [sheet.getCellByPosition(6, header + 1 + i) for i in range(n)]
+    ts = [abs(c.getValue()) for c in ts if c.getType().value == "VALUE"]
+    crit = t_isf(OUTLIER_ALPHA / (2 * n), df - 1) if df - 1 > 0 else None
+    top = max(ts + [WORTH_A_LOOK] + ([crit] if crit else [])) * 1.1
+    top = math.ceil(top * 2) / 2                        # a round axis limit
+
+    # reference lines: (name, colour, (x0, y0), (x1, y1), in the legend)
+    w = WORTH_A_LOOK
+    grey_c, crit_c, lev_c = (REF_GREY, 0x000000, 0x555555) if greyscale else \
+        (REF_GREY, LINE_COLORS[0], LINE_COLORS[1])
+    lines = [(f"|t*| = {w:g} (worth a look)", grey_c, (0, w), (1, w), True),
+             (f"t* = -{w:g}", grey_c, (0, -w), (1, -w), False)]
+    if crit:
+        lines += [(f"Bonferroni critical t = \u00b1{crit:.2f}", crit_c, (0, crit),
+                   (1, crit), True),
+                  (f"t* = -{crit:.2f}", crit_c, (0, -crit), (1, -crit), False)]
+    if cutoff is not None:
+        lines.append((f"2p/n = {cutoff:.3g} (high leverage)", lev_c, (cutoff, -top),
+                      (cutoff, top), True))
+    col = 13
+    table = [["Influence plot reference lines", "x", "y"]]
+    spans = []
+    for name, _, a, b, _ in lines:
+        spans.append((header + len(table), header + len(table) + 1))
+        table += [[name, *a], [name, *b]]
+    _write_block(sheet, col, header, table)
+    sheet.getCellRangeByPosition(col, header, col + 2, header).CharWeight = calc.BOLD
+
+    pos = sheet.getCellByPosition(col + 4, header).Position
+    left = pos.X
+    page = sheet.getDrawPage()
+    for j in range(page.getCount()):
+        shape = page.getByIndex(j)
+        sp, sz = shape.Position, shape.Size
+        if sp.X + sz.Width > left and sp.X < left + size[0]:
+            pos = Point(pos.X, max(pos.Y, sp.Y + sz.Height + 500))
+    title = "Influence plot" + (f": {model_name}" if model_name else "")
+    chart = insert_scatter_chart(doc, sheet, "Influence plot", data, pos, size,
+                                 title + " (marker area ~ Cook's D)", "Leverage h",
+                                 "Externally studentized residual t*",
+                                 0x333333 if greyscale else BAR_COLOR)
+    diagram = chart.getDiagram()
+    x_axis, y_axis = diagram.getXAxis(), diagram.getYAxis()
+    x_axis.CrossoverPosition = uno.Enum("com.sun.star.chart.ChartAxisPosition", "START")
+    x_axis.AutoMin = x_axis.AutoMax = False
+    x_axis.Min, x_axis.Max = 0.0, 1.0
+    y_axis.AutoMin = y_axis.AutoMax = False
+    y_axis.Min, y_axis.Max = -top, top
+    diagram.HasYAxisGrid = False           # the reference lines take over that role
+    chart_type = chart.getFirstDiagram().getCoordinateSystems()[0].getChartTypes()[0]
+    series = chart_type.getDataSeries()[0]
+    series.ShowLegendEntry = False
+    biggest = max(c for c in cooks if c is not None) or 1.0
+    for i, c in enumerate(cooks):
+        point = series.getDataPointByIndex(i)
+        symbol = point.Symbol
+        symbol.Style = uno.Enum("com.sun.star.chart2.SymbolStyle", "STANDARD")
+        symbol.StandardSymbol = 8          # circle (LibreOffice: 0 square, 1 diamond, 8 circle)
+        d = INFLUENCE_MIN + INFLUENCE_RANGE * math.sqrt(max(c or 0.0, 0.0) / biggest)
+        symbol.Size = Size(int(d), int(d))
+        point.Symbol = symbol
+    _label_points(chart, [(i, labels[i]) for i in labelled])
+    for i in labelled:                                  # labels beside the markers
+        series.getDataPointByIndex(i).LabelPlacement = uno.getConstantByName(
+            "com.sun.star.chart.DataLabelPlacement.RIGHT")
+    for (_, color, _, _, legend), (first, last) in zip(lines, spans):
+        _add_line_series(chart, chart_type, sheet, col, first, last, color, legend)
+    chart.HasLegend = True
+    chart.getLegend().Alignment = uno.Enum("com.sun.star.chart.ChartLegendPosition", "BOTTOM")
+    _plain_axes(chart)
+    return chart
+
+
+def _add_line_series(chart, chart_type, sheet, col, first, last, color, legend=True):
+    """A dashed line through the (x, y) rows first..last of the reference table (name in
+    column col, x and y in the next two)."""
+    ctx = uno.getComponentContext()
+    smgr = ctx.ServiceManager
+    provider = chart.getDataProvider()
+
+    def labelled(c, role):
+        rng = sheet.getCellRangeByPosition(c, first, c, last).AbsoluteName
+        values = provider.createDataSequenceByRangeRepresentation(rng)
+        values.Role = role
+        seq = smgr.createInstanceWithContext("com.sun.star.chart2.data.LabeledDataSequence",
+                                             ctx)
+        seq.setValues(values)
+        seq.setLabel(provider.createDataSequenceByRangeRepresentation(
+            sheet.getCellByPosition(col, first).AbsoluteName))
+        return seq
+
+    s = smgr.createInstanceWithContext("com.sun.star.chart2.DataSeries", ctx)
+    s.setData((labelled(col + 1, "values-x"), labelled(col + 2, "values-y")))
+    chart_type.addDataSeries(s)
+    s.Color = color
+    s.LineWidth = 35
+    s.LineStyle = uno.Enum("com.sun.star.drawing.LineStyle", "DASH")
+    dash = uno.createUnoStruct("com.sun.star.drawing.LineDash")
+    dash.Style = uno.Enum("com.sun.star.drawing.DashStyle", "RECT")
+    dash.Dots, dash.DotLen, dash.Dashes, dash.DashLen, dash.Distance = 0, 0, 1, 200, 150
+    s.LineDash = dash
+    symbol = s.Symbol
+    symbol.Style = uno.Enum("com.sun.star.chart2.SymbolStyle", "NONE")
+    s.Symbol = symbol
+    s.ShowLegendEntry = legend
 
 
 @dataclass
@@ -49,6 +244,8 @@ class DesignTable:
     blocks: list
     responses: dict               # name -> list of values (None = empty)
     actual: list = None           # rows of actual levels (None if any is text)
+    std: list = None              # standard order of each row (None: not numeric)
+    labels: list = None           # headers of the actual-level columns, e.g. "Time (min)"
 
 
 def read_design_table(data, screening=True):
@@ -71,6 +268,7 @@ def read_design_table(data, screening=True):
     if not names:
         raise sc.ScreeningError("The design table has no response columns.")
     pt, bl = header.index("Point type"), header.index("Block")
+    so = header.index("Std order") if "Std order" in header else None
     rows = [r for r in data[1:] if any(str(v).strip() for v in r[:end])]
 
     def number(v, what, row):
@@ -113,7 +311,12 @@ def read_design_table(data, screening=True):
                 values.append(None)
         responses[name] = values
     factors = [header[j][:-len(CODED)] for j in coded_cols]
-    return DesignTable(factors, coded, ptype, blocks, responses, actual)
+    std = [r[so] for r in rows] if so is not None else None
+    if std is not None and not all(isinstance(v, (int, float)) and not isinstance(v, bool)
+                                   for v in std):
+        std = None
+    labels = [header[coded_cols[-1] + 1 + j] for j in range(k)]
+    return DesignTable(factors, coded, ptype, blocks, responses, actual, std, labels)
 
 
 def default_table_range(doc):
@@ -169,8 +372,9 @@ def run_screening(doc, opts):
     T, P, R = "0.000", P_FORMAT, "0.0000"
 
     def add(*values, bold=False, overflow=False, fmt=()):
-        (long if overflow else fitted).append((len(fitted) + len(long), list(values), bold,
-                                               fmt))
+        index = len(fitted) + len(long)
+        (long if overflow else fitted).append((index, list(values), bold, fmt))
+        return index
 
     add(f"Screening analysis of {response}", bold=True, overflow=True)
     add("Design table", cell_range.AbsoluteName, overflow=True)
@@ -252,13 +456,21 @@ def run_screening(doc, opts):
                        "No significant curvature: a first-order model (with interactions) "
                        "describes the region.")
             add(verdict, overflow=True)
+    add()
+    diag = None
+    if a.diagnostics is not None:
+        diag = add_diagnostics(add, table, a.observations, a.diagnostics, a.n - a.df, a.df,
+                               E)
+    else:
+        add("Diagnostics per run (Cook's distance): not available, because the model has "
+            "no residual degrees of freedom.", overflow=True)
     if a.notes:
         add()
         for n in a.notes:
             add("Note: " + n, overflow=True)
     add()
     add("References", bold=True, overflow=True)
-    for r in REFERENCES:
+    for r in REFERENCES + COOK_REFERENCES:
         add(r, overflow=True)
 
     with calc.undo_context(doc, "LibreStats: Screening analysis"):
@@ -271,8 +483,8 @@ def run_screening(doc, opts):
                 if code:
                     sheet.getCellByPosition(j, index).NumberFormat = formats.key(code)
             if bold:
-                sheet.getCellRangeByPosition(0, index, 7, index).CharWeight = calc.BOLD
-        sheet.getCellRangeByPosition(0, 0, 7, 0).getColumns().OptimalWidth = True
+                sheet.getCellRangeByPosition(0, index, 11, index).CharWeight = calc.BOLD
+        sheet.getCellRangeByPosition(0, 0, 11, 0).getColumns().OptimalWidth = True
         for index, values, bold, _ in long:
             if values:
                 _write_block(sheet, 0, index, [values])
@@ -280,6 +492,10 @@ def run_screening(doc, opts):
                 sheet.getCellByPosition(0, index).CharWeight = calc.BOLD
         if opts.charts:
             _charts(doc, sheet, a, factors, opts.alpha, crit, formats)
+            if diag:
+                influence_plot(doc, sheet, *diag,
+                               model_name="main effects and two-factor interactions"
+                               if opts.model == "2fi" else "main effects")
     doc.getCurrentController().setActiveSheet(sheet)
     return sheet.getName()
 
@@ -295,7 +511,8 @@ class _Formats:
 
 
 def _charts(doc, sheet, a, factors, alpha, crit, formats):
-    col = 10                                   # chart tables start in column K
+    col = 13                                   # chart tables start in column N
+                                               # (the run diagnostics use A-L)
     row = 0
     terms = [t for t in a.terms if t.t is not None]
     origin = sheet.getCellByPosition(col + 5, 0).Position

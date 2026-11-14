@@ -3,10 +3,12 @@
 import math
 from contextlib import contextmanager
 
-from com.sun.star.awt.MessageBoxType import ERRORBOX, INFOBOX
+from com.sun.star.awt.MessageBoxType import ERRORBOX, INFOBOX, QUERYBOX
 from com.sun.star.table import CellRangeAddress
 
 BUTTONS_OK = 1  # com.sun.star.awt.MessageBoxButtons.BUTTONS_OK
+BUTTONS_YES_NO = 3   # com.sun.star.awt.MessageBoxButtons.BUTTONS_YES_NO
+RESULT_YES = 2       # com.sun.star.awt.MessageBoxResults.YES
 BOLD = 150.0    # com.sun.star.awt.FontWeight.BOLD
 
 
@@ -33,6 +35,16 @@ def message_box(ctx, parent, title, text, error=True):
     box = toolkit.createMessageBox(parent, ERRORBOX if error else INFOBOX, BUTTONS_OK, title, text)
     box.execute()
     box.dispose()
+
+
+def confirm(ctx, parent, title, text):
+    """Yes/No question; True for Yes."""
+    toolkit = ctx.ServiceManager.createInstanceWithContext("com.sun.star.awt.Toolkit", ctx)
+    box = toolkit.createMessageBox(parent, QUERYBOX, BUTTONS_YES_NO, title, text)
+    try:
+        return box.execute() == RESULT_YES
+    finally:
+        box.dispose()
 
 
 def selection_text(doc):

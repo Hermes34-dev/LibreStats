@@ -909,7 +909,10 @@ def check_screening(desktop, handler):
     check(abs(find_row(cells, "Pseudo standard error (PSE)")[1] - 2.625) < 1e-12 and
           find_row(cells, "Effects beyond SME")[1] == "A, D, AC, AD",
           "Screening analysis: Lenth PSE 2.625, effects beyond SME")
-    check(sheet.Charts.getCount() == 2, "Screening analysis: Pareto chart and half-normal plot")
+    check(sheet.Charts.getCount() == 3 and
+          {n.split(" ")[0] for n in sheet.Charts.getElementNames()} >= {"Pareto", "Half-normal",
+                                                                         "Influence"},
+          "Screening analysis: Pareto chart, half-normal plot and influence plot")
     hn = sheet.Charts.getByName("Half-normal plot").EmbeddedObject
     series = hn.getFirstDiagram().getCoordinateSystems()[0].getChartTypes()[0].getDataSeries()[0]
     labels = [series.getDataPointByIndex(i).CustomLabelFields for i in range(15)]
@@ -937,6 +940,14 @@ def check_screening(desktop, handler):
           any(str(r[0]).startswith("Significant curvature") for r in cells),
           "Screening analysis: main effects, curvature detected")
     check(any(str(r[0]) == "A + BCD" for r in cells), "Screening analysis: alias chains listed")
+    diag = next(i for i, r in enumerate(cells)
+                if r[0] == "Diagnostics per run: outliers, leverage and influence")
+    drows = cells[diag + 4:diag + 15]
+    check([r[0] for r in drows] == [float(v) for v in range(1, 12)] and
+          all(abs(r[9] - 10 / 27) < 1e-9 for r in drows[:8]) and
+          abs(drows[8][9] - 0.0625) < 1e-9 and abs(drows[10][9]) < 1e-12 and
+          str(cells[diag + 15][0]).startswith("Flagged runs (by standard order)"),
+          "Screening analysis: diagnostics per run (statsmodels values)")
 
     for rng, msg in (("$Sheet1.$A$1:$D$5", "design sheet"),
                      (f"${name}.$A$1:$M$12", "no response column")):
@@ -1032,6 +1043,23 @@ def check_rsm(desktop, handler):
     check(report == "RSM analysis" and abs(coef["Constant"] - 79.94) < 0.001 and
           abs(coef["A^2"] + 1.376) < 0.001 and abs(coef["AB"] - 0.25) < 1e-9,
           "RSM analysis: Montgomery 11.2 coefficients from a randomised CCD sheet")
+    fit_rows = [str(r[0]) for r in cells[:head]]
+    check(abs(find_row(cells, "R-squared ceiling (pure error)")[1] - (1 - 0.2120 / 28.743077))
+          < 1e-6 and fit_rows.index("R-squared ceiling (pure error)") ==
+          fit_rows.index("Predicted R-squared") + 1,
+          "RSM analysis: R-squared ceiling 1 - SS pure error / SS total, after predicted R2")
+    diag = next(i for i, r in enumerate(cells)
+                if r[0] == "Diagnostics per run: outliers, leverage and influence")
+    dhead = cells[diag + 3]
+    drows = {r[0]: r for r in cells[diag + 4:diag + 17]}
+    check(dhead[0] == "Std order" and dhead[9] == "Cook's D" and dhead[6] == "Ext. stud. t*"
+          and len(drows) == 13 and
+          abs(drows[2.0][9] - 0.451581) < 1e-6 and abs(drows[8.0][9] - 0.288668) < 1e-6 and
+          abs(drows[1.0][5] - 0.625) < 1e-12 and drows[2.0][11] == "" and
+          cells[diag + 17][0] == "Flagged runs (by standard order): none" and
+          sheet.Charts.hasByName("Influence plot"),
+          "RSM analysis: diagnostics per run by standard order (statsmodels values), "
+          "influence plot")
     st = next(i for i, r in enumerate(cells) if r[0] == "Stationary point and canonical analysis")
     check(abs(cells[st + 2][3] - 86.95) < 0.005 and abs(cells[st + 3][3] - 176.53) < 0.005 and
           find_row(cells, "Nature")[1] == "maximum",
@@ -1045,11 +1073,27 @@ def check_rsm(desktop, handler):
           "RSM analysis: exact half-ranges recovered from the rounded settings")
     map_cells = sheet.getCellRangeByPosition(11, 2, 31, 22)
     check(map_cells.getCellByPosition(0, 0).CellBackColor != -1 and
-          sheet.getDrawPage().getCount() == 1 and
-          sheet.getDrawPage().getByIndex(0).Name == "Fitted surface",
+          [sheet.getDrawPage().getByIndex(i).Name for i in range(1, 4)] ==
+          ["Observed vs predicted", "Residuals by factor", "Optimum trace"] and
+          sheet.getDrawPage().getCount() == 5 and
+          sheet.getDrawPage().getByIndex(0).Name == "Fitted surface: Time x Temperature",
           "RSM analysis: coloured response map and 3D surface picture")
     check(doc.getUndoManager().getCurrentUndoActionTitle() ==
           "LibreStats: Response surface analysis", "RSM analysis is a single undo step")
+    cells = report_text(doc.Sheets.getByName(run("doeAnalyseRSM", f"${name}.$A$1:$I$14",
+                                                 Model="cubic")))
+    flat = [str(r[0]) for r in cells]
+    head = next(i for i, r in enumerate(cells) if r[0] == "Term")
+    check(find_row(cells, "Model")[1].startswith("reduced cubic") and
+          cells[head][7] == "VIF" and {"A^2B (part of the B^3 alias)",
+                                       "AB^2 (part of the A^3 alias)"} <= set(flat) and
+          "A^3" not in
+          flat[head:head + 10] and
+          "A^3 is aliased with A and AB^2: A^3 = 2 A - AB^2" in flat and
+          "B^3 is aliased with B and A^2B: B^3 = 2 B - A^2B" in flat and
+          any(f.endswith("(found numerically)") for f in flat) and
+          "Stationary point and canonical analysis" not in flat,
+          "RSM analysis: reduced cubic on a CCD drops A^3, B^3 and reports their aliases")
 
     # Box-Behnken in 3 blocks, map of Temperature x pH
     name = run("doeDesign", "$Sheet1.$A$1:$D$4", Design="bbd", Randomize=False)
@@ -1059,11 +1103,185 @@ def check_rsm(desktop, handler):
     design.getCellRangeByPosition(10, 1, 10, n).setDataArray(tuple(
         (60 - (r[4] - 0.3) ** 2 - 2 * r[5] ** 2 + r[6] + 0.1 * (i % 3),) for i, r in enumerate(rows)))
     cells = report_text(doc.Sheets.getByName(run("doeAnalyseRSM", f"${name}.$A$1:$K${n + 1}",
-                                                 XFactor="Temperature", YFactor="C")))
+                                                 XFactor="Temperature", YFactor="C",
+                                                 Fixed="centre")))
     check(find_row(cells, "Runs analysed")[1] == 15.0 and
-          str(cells[0][10]).startswith("Response map: predicted Response (other factors at "
-                                       "their centre: Time = 85)"),
+          str(cells[0][10]) == "Response map: predicted Response (Time (min) fixed at the "
+                               "centre = 85)",
           "RSM analysis: Box-Behnken, map of chosen factors")
+
+    # CCCD (Leichtweis et al., 2019): Low/High = +-alpha, analysed like any RSM design
+    name = run("doeDesign", "$Sheet1.$A$1:$D$4", Design="cccd", Seed=4)
+    design = doc.Sheets.getByName(name)
+    cells = report_text(design)
+    info = summary_part(cells)
+    rows = [r for r in cells[1:] if r[0] != ""]
+    a = 8 ** 0.25
+    check(len(rows) == 28 and sorted(r[2] for r in rows) ==
+          [-1.0] * 6 + [0.0] * 6 + [1.0] * 8 + [3.0] * 8 and
+          find_row(info, "Design")[1].startswith("CCCD (Prieto et al.)") and
+          find_row(info, "Axial distance alpha (coded)")[1].startswith("1.6818 ((2^3)^(1/4); "
+                                                                       "Low and High"),
+          "CCCD 3 factors: 8 inner, 6 axial, 8 outer, 6 centre points; alpha reported")
+    check(find_row(info, "Distinct design points")[1] == 23.0 and
+          find_row(info, "Lack-of-fit degrees of freedom")[1] == 13.0 and
+          find_row(info, "Rotatable")[1] == "no" and
+          find_row(info, "Highest estimable model")[1] ==
+          "quadratic (full cubic aliased: rank 17 of 20)",
+          "CCCD: distinct points, lack-of-fit df, rotatability and cubic aliasing computed")
+    check(min(r[7] for r in rows) == 80.0 and max(r[7] for r in rows) == 90.0 and
+          min(r[9] for r in rows) == 5.0 and max(r[9] for r in rows) == 7.0,
+          "CCCD: every run within Low-High (Low/High = +-alpha)")
+    design.getCellRangeByPosition(10, 1, 10, 28).setDataArray(tuple(
+        (50 + 2 * r[4] - r[5] ** 2 + 0.5 * r[4] * r[6] + 0.1 * (i % 4),)
+        for i, r in enumerate(rows)))
+    cells = report_text(doc.Sheets.getByName(run("doeAnalyseRSM", f"${name}.$A$1:$K$29",
+                                                 Charts=False)))
+    levels = next(i for i, r in enumerate(cells) if str(r[0]).startswith("Factor levels"))
+    lof = next(r for r in cells if str(r[0]).strip() == "Lack of fit")
+    check(find_row(cells, "Runs analysed")[1] == 28.0 and lof[1] == 13.0 and
+          cells[levels + 2][2] == 85.0 and abs(cells[levels + 2][3] - 5 / a) < 1e-12,
+          "RSM analysis of a CCCD: 28 runs, 13 lack-of-fit df, half-range 5 / alpha")
+
+    # the user's Design 2 (example_data_rsm.ods): run 3 is an outlier, not influential
+    data.getCellRangeByName("F1:I4").setDataArray((
+        ("Factors", "Units", "Low", "High"), ("Time", "min", 1.0, 25.0),
+        ("Temp", "C", 50.0, 200.0), ("EhOH", "%", 0.0, 100.0)))
+    name = run("doeDesign", "$Sheet1.$F$1:$I$4", Design="cccd", Randomize=False,
+               Responses="Yield")
+    design = doc.Sheets.getByName(name)
+    design.getCellRangeByPosition(10, 1, 10, 28).setDataArray(tuple((v,) for v in (
+        24.28989323, 33.66123277, 39.83253039, 18.65134664, 12.52643918, 24.52400157,
+        19.43370304, 18.04370825, 11.58758592, 19.25931338, 16.25878132, 9.714146726,
+        13.70971019, 33.93868664, 22.13181921, 51.13647479, 26.76090827, 37.48920235,
+        15.37816958, 31.05661974, 11.95990485, 18.31395824, 17.97089328, 11.73768574,
+        8.318061785, 12.1663204, 14.31427388, 10.81211525)))
+    report = doc.Sheets.getByName(run("doeAnalyseRSM", f"${name}.$A$1:$K$29"))
+    cells = report_text(report)
+    diag = next(i for i, r in enumerate(cells)
+                if r[0] == "Diagnostics per run: outliers, leverage and influence")
+    run3 = cells[diag + 4 + 2]
+    flagged = [str(r[0]) for r in cells[diag + 32:diag + 35]]
+    check(run3[0] == 3.0 and abs(run3[6] - 4.19) < 0.005 and abs(run3[7] - 0.0006) < 5e-5 and
+          abs(run3[8] - 0.017) < 5e-4 and abs(run3[5] - 0.163) < 5e-4 and
+          abs(run3[9] - 0.178) < 5e-4 and run3[11] == "outlier" and
+          cells[diag + 4 + 8][11] == "check" and
+          flagged[0] == "Flagged runs (by standard order)" and
+          flagged[1].startswith("Run 3: outlier (t* = 4.19, Bonferroni p = 0.017); not "
+                                "influential") and flagged[2].startswith("Run 9: possible "
+                                                                         "outlier"),
+          "Diagnostics: Design 2 run 3 t* 4.19, p 0.0006, p_bonf 0.017, h 0.163, D 0.178 -> "
+          "outlier, not influential")
+    names = [n for n in report.Charts.getElementNames() if n.startswith("Influence plot")]
+    # model reduction on Design 2: backward elimination and all subsets agree
+    rc = report_text(doc.Sheets.getByName(run("doeAnalyseRSM", f"${name}.$A$1:$K$29",
+                                                 Reduction="backward", Charts=False)))
+    rflat = [str(r[0]) for r in rc]
+    rhead = rflat.index("Model reduction: backward elimination, alpha = 0.05, hierarchy kept")
+    steps = [rc[rhead + 2 + i][1] for i in range(4)]
+    comp = next(i for i, r in enumerate(rc) if r[1] == "Starting model")
+    check(steps == ["B^2", "AB", "AC", "A^2"] and
+          "Reduced from full quadratic by backward elimination (alpha = 0.05; hierarchy "
+          "kept). Removed: B^2, AB, AC, A^2." in rflat and
+          abs(rc[comp + 3][1] - 0.165) < 5e-4 and abs(rc[comp + 3][2] - 0.4879) < 5e-4 and
+          find_row(rc, "Terms in the model")[1] == "A, B, C, C^2, BC" and
+          rflat.index(f"Model reduction: backward elimination, alpha = 0.05, hierarchy kept") <
+          rflat.index("Analysis of variance"),
+          "Model reduction: backward elimination on Design 2 removes B^2, AB, AC, A^2; "
+          "predicted R2 0.165 -> 0.488")
+    rc = report_text(doc.Sheets.getByName(run("doeAnalyseRSM", f"${name}.$A$1:$K$29",
+                                                 Reduction="subsets", Top=3, Charts=False)))
+    rhead = next(i for i, r in enumerate(rc) if r[0] == "Rank")
+    check([r[8] for r in rc[rhead + 1:rhead + 4]] == ["A, B, C, C^2, BC", "A, C, C^2",
+                                                         "A, B, C, C^2"] and
+          abs(rc[rhead + 1][1] - 116.094) < 5e-4 and rc[rhead + 1][7] == "<-" and
+          str(rc[rhead - 1][0]).startswith("95 models fitted (hierarchical)"),
+          "Model reduction: all subsets (AICc) on Design 2, top 3, rank 1 used")
+    try:
+        run("doeAnalyseRSM", f"${name}.$A$1:$K$29", Reduction="manual", Remove="C",
+            Charts=False)
+        check(False, "Model reduction: manual removal refused when it breaks hierarchy")
+    except Exception as exc:
+        check("C cannot be removed while C^2, AC and BC are in the model" in str(exc),
+              "Model reduction: manual removal refused when it breaks hierarchy")
+    # plot options: custom fixed value, greyscale, studentized residuals, centre anchor
+    osheet = doc.Sheets.getByName(run("doeAnalyseRSM", f"${name}.$A$1:$K$29",
+                                      Fixed="custom", FixedValues="EhOH=50", Greyscale=True,
+                                      Residuals="studentized", Anchor="centre", Goal="min"))
+    oc = report_text(osheet)
+    oflat = [str(r[0]) for r in oc]
+    cell = osheet.getCellByPosition(11, 2).CellBackColor
+    check(str(oc[0][10]).endswith("(EhOH (%) fixed at chosen values = 50)") and
+          any(f.startswith("Plots (to the right, below the maps): observed vs predicted, "
+                           "residuals by factor (externally studentized), optimum trace "
+                           "(anchor: the centre), influence plot (greyscale).") for f in oflat)
+          and cell >> 16 == (cell >> 8) & 255 == cell & 255,
+          "RSM plots: custom fixed value, greyscale map, studentized residuals, centre anchor")
+    try:
+        run("doeAnalyseRSM", f"${name}.$A$1:$K$29", Fixed="custom", FixedValues="EhOH 50")
+        check(False, "RSM plots: malformed custom fixed values refused")
+    except Exception as exc:
+        check("write name=value" in str(exc), "RSM plots: malformed custom fixed values refused")
+
+    # the user's bug report: run 3 left out (27 runs), reduced cubic, all subsets
+    design.getCellByPosition(10, 3).setString("")
+    rsheet = doc.Sheets.getByName(run("doeAnalyseRSM", f"${name}.$A$1:$K$29", Model="cubic",
+                                      Reduction="subsets"))
+    rc = report_text(rsheet)
+    rflat = [str(r[0]) for r in rc]
+    rhead = next(i for i, r in enumerate(rc) if r[0] == "Rank")
+    check(find_row(rc, "Runs analysed")[1] == 27.0 and
+          any(f.startswith("The design supports 17 of the 20 full-cubic terms (3 aliased "
+                           "term(s) removed); the final model has 9.") for f in rflat) and
+          "AB^2 (aliased with AC^2)" in rflat and
+          "AB^2 (aliased with AC^2)" in rc[rhead + 1][8] and rc[rhead][2] == "Delta AICc" and
+          rc[rhead + 1][2] == 0.0 and abs(rc[rhead + 2][2] - 0.1647) < 5e-4 and
+          any(f.startswith("Delta AICc = AICc - lowest AICc; models with Delta AICc < 2")
+              for f in rflat),
+          "Bug fixes: alias count 17 of 20 vs final 9; aliased terms marked; Delta AICc")
+    check(any(f.startswith("Warning: the predicted minimum (3.") and
+              "below the lowest measured response (8.318)" in f for f in rflat) and
+          any(f.startswith("The experimental region is the box of the coded settings that "
+                           "were run. All 8 corners of the box were run") for f in rflat) and
+          "Equation in actual units" in rflat and
+          not any("average block" in f or "blocks included" in f for f in rflat),
+          "Bug fixes: minimum below the measured range flagged; CCCD corners note; no "
+          "block wording without blocks")
+    widths = [rsheet.getColumns().getByIndex(c).Width for c in (10, 11, 33)]
+    check(widths[0] < 3000 and widths[2] < 3000,
+          f"Bug fix: response map first columns not widened by the title ({widths})")
+    design.getCellByPosition(10, 3).setValue(39.83253039)
+    plot = report.Charts.getByName(names[0]).EmbeddedObject
+    series = plot.getFirstDiagram().getCoordinateSystems()[0].getChartTypes()[0] \
+        .getDataSeries()[0]
+    sizes = [series.getDataPointByIndex(i).Symbol.Size.Width for i in range(28)]
+    texts = {i + 1: series.getDataPointByIndex(i).CustomLabelFields[0].getString()
+             for i in range(28) if series.getDataPointByIndex(i).CustomLabelFields}
+    # flagged 3, 9; largest D: 21, 9, 20; largest |t*|: 3, 9, 10 (statsmodels)
+    shapes = [report.getDrawPage().getByIndex(i).Name
+              for i in range(report.getDrawPage().getCount())]
+    titles = [str(cells[0][10 + 23 * j]) for j in range(3)]
+    check(shapes[:3] == ["Fitted surface: Time x Temp", "Fitted surface: Time x EhOH",
+                         "Fitted surface: Temp x EhOH"] and
+          all(t.startswith("Response map: predicted Yield") for t in titles) and
+          titles[0].endswith("(EhOH (%) fixed at the predicted maximum = 100)") and
+          any(str(r[0]).startswith("Response maps and 3D surfaces (to the right): Time x "
+                                   "Temp, Time x EhOH, Temp x EhOH.") for r in cells),
+          "RSM analysis: response maps and 3D surfaces for all 3 factor pairs, side by side")
+    ctype = plot.getFirstDiagram().getCoordinateSystems()[0].getChartTypes()[0]
+    lines = ctype.getDataSeries()[1:]
+    ys = [tuple(sq.getValues().getData()) for ln in lines for sq in ln.getDataSequences()
+          if sq.getValues().Role == "values-y"]
+    xs = [tuple(sq.getValues().getData()) for ln in lines for sq in ln.getDataSequences()
+          if sq.getValues().Role == "values-x"]
+    check(plot.getTitle().String == "Influence plot: full quadratic (marker area ~ Cook's D)"
+          and len(lines) == 5 and ys[0] == (2.0, 2.0) and ys[1] == (-2.0, -2.0) and
+          abs(ys[2][0] - 3.697963) < 1e-5 and abs(xs[4][0] - 20 / 28) < 1e-12 and
+          [ln.ShowLegendEntry for ln in lines] == [True, False, True, False, True],
+          "Influence plot: model in the title; dashed lines at +-2, +-Bonferroni t (3.70), "
+          "2p/n = 0.714")
+    check(texts == {i: str(i) for i in (3, 9, 10, 20, 21)} and sizes[20] == max(sizes) and sizes[4] == min(sizes),
+          "Influence plot: flagged and most extreme runs labelled, marker size by Cook's D")
 
     # a two-level factorial with centre points: the quadratic model is refused clearly
     name = run("doeDesign", "$Sheet1.$A$1:$D$3", Design="full", CentrePoints=3,
@@ -1079,6 +1297,11 @@ def check_rsm(desktop, handler):
               "RSM analysis refuses squares from a two-level design")
     cells = report_text(doc.Sheets.getByName(run("doeAnalyseRSM", f"${name}.$A$1:$I$8",
                                                  Model="interaction", Charts=False)))
+    cubic = report_text(doc.Sheets.getByName(run("doeAnalyseRSM", f"${name}.$A$1:$I$8",
+                                                 Model="cubic", Charts=False)))
+    cflat = [str(r[0]) for r in cubic]
+    check("B^2 is aliased with A^2" in cflat and "A^2B is aliased with B" in cflat,
+          "RSM analysis: reduced cubic on a factorial with centre points (A^2 = B^2)")
     check(find_row(cells, "Model")[1].startswith("linear + two-factor interactions"),
           "RSM analysis: interaction model on a factorial with centre points")
 

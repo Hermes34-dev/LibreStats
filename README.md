@@ -10,9 +10,7 @@ LibreStats adds a **LibreStats** menu to Calc with dialog-driven statistical too
 
 The first module is **Data Preparation**: outlier detection, missing-data diagnostics and imputation, transformations and scaling, compositional log-ratios, and coding and recoding of variables. The second, **Data Visualization**, draws charts with Calc's own chart engine (a histogram and a normal Q-Q plot), plus a 3D surface plot drawn as an SVG picture, since Calc has no surface chart. **Assumption Checks** tests normality (Shapiro-Wilk) and equality of variances (Levene / Brown-Forsythe) before groups are compared. **Comparison Tests** compares means: one-sample, Welch and paired t-tests, one-way, Welch and repeated-measures ANOVA, and post hoc tests (Tukey HSD, Games-Howell, Dunnett, Dunn). **DOE / RSM** creates experimental designs: two-level screening designs (full and fractional factorials, Plackett-Burman) and response surface designs (central composite, Box-Behnken), and analyses the results: screening experiments (effects, aliases, Lenth's method, curvature check, Pareto chart and half-normal plot) and response surface experiments (quadratic model, stationary point, optimum, response map and 3D surface).
 
-> **Status:** early development (v0.14.0). Developed and tested on Linux with LibreOffice 26.8. Not yet tested on Windows or macOS.
->
-> **DOE / RSM is new and still under testing.** The *DOE / RSM* menu (design of experiments and response surface methodology) is available and checked against published examples, but it has had little use on real experiments so far. Check the design summary before running an experiment, and please report anything unexpected. See [documentation.md](documentation.md), section 9.
+> **Status:** early development (v0.23.0). Developed and tested on Linux with LibreOffice 26.8. Not yet tested on Windows or macOS.
 
 ---
 

@@ -10,6 +10,9 @@ average block.
   when the group is removed from the full model. The residual is split into
   lack of fit and pure error (repeated points within a block).
 - Predicted R^2 from PRESS = sum (e_i / (1 - h_ii))^2.
+- R^2 ceiling = 1 - SS(pure error) / SS(total): the largest R^2 any model can reach,
+  since no model explains the scatter of repeated runs (Draper & Smith, 1998).
+- Per-run diagnostics with Cook's (1977) distance: see influence.py.
 - Stationary point (Box & Wilson, 1951; Myers et al., 2016, ch. 6): with
   y = b0 + x'b + x'Bx, xs = -B^-1 b / 2, ys = b0 + xs'b / 2. Canonical
   analysis: the eigenvalues of B; all negative = maximum, all positive =
@@ -18,17 +21,34 @@ average block.
   the maximum and minimum of a quadratic over a box lie at a stationary point
   of the function restricted to some face of the box, so every face (each
   factor at its lower bound, upper bound or free) is solved exactly.
+- Reduced cubic: the full cubic (quadratic + A^3, A^2B, ABC terms) with the
+  aliased terms removed. The columns of the model matrix are orthogonalised in
+  hierarchical order (constant, blocks, linear, squares, two-factor
+  interactions, then cubic terms: ABC-type, A^2B-type, A^3-type), i.e. a QR
+  decomposition in a fixed column order: a column that is (numerically) a linear
+  combination of the columns before it is aliased with them, is left out, and
+  that combination is reported. A fixed order rather than column pivoting
+  keeps the model hierarchical (a cubic term never displaces a lower-order
+  one). Which member of an aliased set is kept does not change the fitted
+  values, residuals, R^2 or ANOVA, only how the coefficients are labelled. The
+  optimum of a cubic over the box is found numerically: a grid search, then
+  coordinate-wise refinement (along one coordinate the model is at most cubic,
+  so each step is solved exactly).
 """
 
 import math
 from dataclasses import dataclass, field
-from itertools import combinations, product
+from itertools import combinations, combinations_with_replacement, product
 
 from .distributions import f_sf, t_sf
 from .doe import LETTERS
+from .influence import diagnostics
 from .linalg import SingularMatrixError, inverse_spd, matvec
 
-MODELS = ("quadratic", "interaction", "linear")
+MODELS = ("quadratic", "interaction", "linear", "cubic")
+ALIAS_TOL = 1e-8      # residual norm / column norm below this: the column is aliased
+GRID_POINTS = 20000   # grid search of the cubic optimum: about this many points
+MAX_MAPS = 3          # response maps / 3D surfaces drawn at most
 RIDGE = 1e-6          # |eigenvalue| below this share of the largest: a ridge
 MAX_FACES_K = 9       # 3^k faces
 
@@ -40,12 +60,13 @@ class RSMError(ValueError):
 @dataclass
 class Term:
     name: str                 # "A", "A^2", "AB", "Block 1"
-    kind: str                 # linear | square | interaction | block
-    factors: tuple            # factor indices
+    kind: str                 # linear | square | interaction | cubic | block
+    factors: tuple            # factor indices (cubic: with repeats, e.g. (0, 0, 1) = A^2B)
     coef: float = None
     se: float = None
     t: float = None
     p: float = None
+    vif: float = None         # variance inflation factor (not for the constant)
 
 
 @dataclass
@@ -86,13 +107,107 @@ class Fit:
     maximum: tuple = None     # (coded point, predicted response)
     minimum: tuple = None
     notes: list = field(default_factory=list)
+    r2_max: float = None      # R^2 ceiling from pure error; None without repeated runs
+    observations: list = field(default_factory=list)   # run indices that were fitted
+    diagnostics: list = field(default_factory=list)    # influence.Diagnostic per fitted run
+    aliases: list = field(default_factory=list)   # reduced cubic: Alias of each removed term
+    start_terms: list = None  # names of all terms of the (alias-reduced) model, before keep
+    lof_p: float = None       # lack-of-fit p (None if it cannot be tested)
+    aicc: float = None
+    full_terms: int = None    # reduced cubic: number of terms of the full cubic (with blocks)
 
     def predict(self, x):
         """Prediction at coded point x for an average block."""
         return sum(t.coef * _value(t, x) for t in self.terms if t.kind != "block")
 
 
+@dataclass
+class Alias:
+    """A term left out of the model: term = sum of coef x kept term (coded units)."""
+    term: str
+    combination: list         # [(coefficient, term name)]
+
+    def text(self):
+        names = ["the constant" if n == "Constant" else n for _, n in self.combination]
+        if not names:
+            return f"{self.term} is zero in every run (it cannot be estimated)"
+        if len(names) == 1 and abs(abs(self.combination[0][0]) - 1) < 1e-9:
+            sign = "" if self.combination[0][0] > 0 else "minus "
+            return f"{self.term} is aliased with {sign}{names[0]}"
+        parts = []
+        for i, (c, n) in enumerate(self.combination):
+            mag = "" if abs(abs(c) - 1) < 1e-9 else f"{abs(c):.4g} "
+            parts.append(("-" if c < 0 else "") * (i == 0) +
+                         ("" if i == 0 else " - " if c < 0 else " + ") + mag + n)
+        listed = ", ".join(names[:-1]) + " and " + names[-1]
+        return f"{self.term} is aliased with {listed}: {self.term} = {''.join(parts)}"
+
+
+def alias_marks(aliases):
+    """{kept term: note} for the terms that stand in for an aliased term of the same
+    order: 'aliased with AC^2' when the removed term equals it (up to sign), otherwise
+    'part of the A^3 alias' (the removed term is a combination of several kept terms).
+    Lower-order terms in a combination (A in A^3 = 2 A - AB^2) are not marked."""
+    marks = {}
+    for a in aliases:
+        order = len(name_monomial(a.term))
+        same = [(c, n) for c, n in a.combination
+                if n != "Constant" and len(name_monomial(n)) == order]
+        for c, n in same:
+            if len(a.combination) == 1:
+                note = f"aliased with {'-' if c < 0 else ''}{a.term}"
+            else:
+                note = f"part of the {a.term} alias"
+            marks.setdefault(n, []).append(note)
+    return {n: "; ".join(v) for n, v in marks.items()}
+
+
+def corners_not_run(bounds, points, tol=1e-9):
+    """Corners of the box (coded bounds) that no run is at."""
+    run = [tuple(p) for p in points]
+    out = []
+    for corner in product(*bounds):
+        if not any(all(abs(a - b) <= tol for a, b in zip(corner, p)) for p in run):
+            out.append(corner)
+    return out
+
+
+def monomial(term):
+    """The term as a sorted tuple of factor indices with repeats, e.g. A^2B = (0, 0, 1)."""
+    if term.kind == "square":
+        return (term.factors[0],) * 2
+    return tuple(sorted(term.factors))
+
+
+def monomial_name(m):
+    """(0, 0, 1) -> 'A^2B'; () -> 'Constant'."""
+    if not m:
+        return "Constant"
+    out = ""
+    for i in sorted(set(m)):
+        n = m.count(i)
+        out += LETTERS[i] + (f"^{n}" if n > 1 else "")
+    return out
+
+
+def name_monomial(name):
+    """'A^2B' -> (0, 0, 1); 'Constant' -> ()."""
+    if name == "Constant":
+        return ()
+    out, i = [], 0
+    while i < len(name):
+        f = LETTERS.index(name[i])
+        n = 1
+        if name[i + 1:i + 2] == "^":
+            n, i = int(name[i + 2]), i + 2
+        out += [f] * n
+        i += 1
+    return tuple(sorted(out))
+
+
 def _value(term, x):
+    if term.kind == "cubic":
+        return math.prod(x[i] for i in term.factors)
     if term.kind == "constant":
         return 1.0
     if term.kind == "linear":
@@ -111,10 +226,56 @@ def model_terms(k, model):
     terms += [Term(LETTERS[i], "linear", (i,)) for i in range(k)]
     if model == "quadratic":
         terms += [Term(LETTERS[i] + "^2", "square", (i,)) for i in range(k)]
-    if model in ("quadratic", "interaction"):
+    if model == "cubic":
+        terms += [Term(LETTERS[i] + "^2", "square", (i,)) for i in range(k)]
+    if model in ("quadratic", "interaction", "cubic"):
         terms += [Term(LETTERS[i] + LETTERS[j], "interaction", (i, j))
                   for i, j in combinations(range(k), 2)]
+    if model == "cubic":
+        cubes = [m for m in combinations_with_replacement(range(k), 3)]
+        cubes.sort(key=lambda m: (len(set(m)) != 3, len(set(m)) == 1, m))  # ABC, A^2B, A^3
+        terms += [Term(monomial_name(m), "cubic", m) for m in cubes]
     return terms
+
+
+def independent_columns(rows, names, tol=ALIAS_TOL):
+    """Hierarchical rank check of a model matrix: Gram-Schmidt (twice, for accuracy) on
+    the columns in the given order. Returns the indices of the columns kept and an
+    Alias for each column that is a linear combination of the columns before it."""
+    n, p = len(rows), len(rows[0])
+    cols = [[r[j] for r in rows] for j in range(p)]
+    q, rmat, kept, aliases = [], [], [], []      # rmat[j]: column j of R (kept columns)
+    for j, v in enumerate(cols):
+        norm = math.sqrt(sum(a * a for a in v))
+        w, coefs = list(v), [0.0] * len(q)
+        for _ in range(2):
+            for t, qt in enumerate(q):
+                c = sum(a * b for a, b in zip(qt, w))
+                coefs[t] += c
+                w = [a - c * b for a, b in zip(w, qt)]
+        rest = math.sqrt(sum(a * a for a in w))
+        if norm == 0 or rest <= tol * norm:
+            # v = Q coefs = K a with K the kept columns, K = Q R: solve R a = coefs
+            m = len(q)
+            a = [0.0] * m
+            for i in range(m - 1, -1, -1):
+                a[i] = (coefs[i] - sum(rmat[c][i] * a[c] for c in range(i + 1, m))) / \
+                    rmat[i][i]
+            scale = max((abs(x) for x in a), default=0.0)
+            combo = [(x, names[kept[i]]) for i, x in enumerate(a)
+                     if abs(x) > 1e-9 * max(1.0, scale)]
+            aliases.append(Alias(names[j], [(_tidy(x), nm) for x, nm in combo]))
+            continue
+        q.append([a / rest for a in w])
+        rmat.append(coefs + [rest])
+        kept.append(j)
+    return kept, aliases
+
+
+def _tidy(x):
+    """Round a coefficient that is a whole number up to rounding error."""
+    r = round(x)
+    return float(r) if abs(x - r) < 1e-9 * max(1.0, abs(x)) else x
 
 
 def _solve(a, b):
@@ -242,8 +403,10 @@ def _least_squares(rows, y):
     return beta, inv, sse
 
 
-def fit_model(coded, blocks, y, model="quadratic"):
-    """Fit the model to the runs with a response (y None = missing)."""
+def fit_model(coded, blocks, y, model="quadratic", keep=None):
+    """Fit the model to the runs with a response (y None = missing). keep: names of the
+    terms to keep from the (alias-reduced) model, e.g. after model reduction; the
+    constant and the block terms are always kept. None: all terms."""
     k = len(coded[0])
     obs = [i for i, v in enumerate(y) if v is not None]
     missing = len(y) - len(obs)
@@ -264,6 +427,22 @@ def fit_model(coded, blocks, y, model="quadratic"):
 
     rows = [row(i) for i in obs]
     yy = [y[i] for i in obs]
+    aliases, full_terms = [], None
+    if model == "cubic":
+        full_terms = len(terms)
+        kept, aliases = independent_columns(rows, [t.name for t in terms])
+        terms = [terms[j] for j in kept]
+        rows = [[r[j] for j in kept] for r in rows]
+    start_terms = [t.name for t in terms]
+    if keep is not None:
+        keep = set(keep)
+        unknown = keep - set(start_terms)
+        if unknown:
+            raise RSMError("Not in the model: " + ", ".join(sorted(unknown)) + ".")
+        idx = [j for j, t in enumerate(terms)
+               if t.kind in ("constant", "block") or t.name in keep]
+        terms = [terms[j] for j in idx]
+        rows = [[r[j] for j in idx] for r in rows]
     n, p = len(rows), len(terms)
     if n <= p:
         raise RSMError(f"{n} runs with a response are too few for the {p} terms of the "
@@ -282,6 +461,10 @@ def fit_model(coded, blocks, y, model="quadratic"):
     for t, bcoef, j in zip(terms, beta, range(p)):
         t.coef = bcoef
         t.se = math.sqrt(mse * inv[j][j])
+        if t.kind != "constant":
+            col = [r[j] for r in rows]
+            m = sum(col) / n
+            t.vif = inv[j][j] * sum((v - m) ** 2 for v in col)
         t.t = bcoef / t.se if t.se > 0 else math.inf
         t.p = 2 * t_sf(abs(t.t), df)
     r2 = 1 - sse / sst if sst > 0 else None
@@ -299,11 +482,14 @@ def fit_model(coded, blocks, y, model="quadratic"):
     # ANOVA by groups: adjusted SS = SSE without the group - SSE
     anova = []
     groups = [("Blocks", "block"), ("Linear", "linear"), ("Square", "square"),
-              ("2-way interaction", "interaction")]
+              ("2-way interaction", "interaction"), ("Cubic", "cubic")]
     model_df = p - 1
     model_ss = sst - sse
-    anova.append(AnovaRow("Model", model_df, model_ss, (model_ss / model_df) / mse,
-                          f_sf((model_ss / model_df) / mse, model_df, df)))
+    if model_df:
+        anova.append(AnovaRow("Model", model_df, model_ss, (model_ss / model_df) / mse,
+                              f_sf((model_ss / model_df) / mse, model_df, df)))
+    else:                                     # constant only (e.g. after model reduction)
+        anova.append(AnovaRow("Model", 0, 0.0))
     for label, kind in groups:
         idx = [j for j, t in enumerate(terms) if t.kind == kind]
         if not idx:
@@ -334,37 +520,143 @@ def fit_model(coded, blocks, y, model="quadratic"):
 
     bounds = [(min(coded[i][j] for i in obs), max(coded[i][j] for i in obs))
               for j in range(k)]
+    lof = next((r for r in anova if r.source.strip() == "Lack of fit"), None)
     fit = Fit(k, model, terms, n, missing, df, mse, r2, r2_adj, r2_pred, anova, bounds,
-              notes=notes)
-    if model == "quadratic":
+              notes=notes, observations=obs,
+              r2_max=1 - pure_ss / sst if pure_df and sst > 0 else None,
+              aliases=aliases, full_terms=full_terms,
+              diagnostics=diagnostics(rows, yy, beta, inv, sse),
+              start_terms=start_terms, lof_p=lof.p if lof else None,
+              aicc=aicc(sse, n, p))
+    cubic = any(t.kind == "cubic" for t in terms)
+    if not cubic and any(t.kind == "square" for t in terms):
         fit.stationary = stationary_point(fit)
-    if k <= MAX_FACES_K:
+    if cubic:
+        fit.maximum = numeric_optimum(fit, True)
+        fit.minimum = numeric_optimum(fit, False)
+    elif k <= MAX_FACES_K:
         fit.maximum = box_optimum(fit, True)
         fit.minimum = box_optimum(fit, False)
     return fit
 
 
-def actual_equation(fit, centres, halves):
-    """Coefficients in actual units, x = (X - c) / h: [(name, coefficient)] with
-    names "Constant", "A", "A^2", "AB" (for an average block)."""
-    b0, b, B = quadratic_parts(fit)
-    k = fit.k
-    c, h = centres, halves
-    const = b0 + sum(-b[i] * c[i] / h[i] + B[i][i] * c[i] ** 2 / h[i] ** 2 for i in range(k))
-    const += sum(2 * B[i][j] * c[i] * c[j] / (h[i] * h[j]) for i, j in combinations(range(k), 2))
-    out = [("Constant", const)]
-    for i in range(k):
-        lin = b[i] / h[i] - 2 * B[i][i] * c[i] / h[i] ** 2
-        lin -= sum(2 * B[i][j] * c[j] / (h[i] * h[j]) for j in range(k) if j != i)
-        out.append((LETTERS[i], lin))
-    kinds = {t.name for t in fit.terms}
-    for i in range(k):
-        if LETTERS[i] + "^2" in kinds:
-            out.append((LETTERS[i] + "^2", B[i][i] / h[i] ** 2))
-    for i, j in combinations(range(k), 2):
-        if LETTERS[i] + LETTERS[j] in kinds:
-            out.append((LETTERS[i] + LETTERS[j], 2 * B[i][j] / (h[i] * h[j])))
+def aicc(sse, n, p):
+    """AICc = n ln(SSE/n) + 2p + 2p(p+1)/(n-p-1), p = model terms including the constant
+    (and block terms); None when n - p - 1 <= 0 or SSE = 0."""
+    if n - p - 1 <= 0 or sse <= 0:
+        return None
+    return n * math.log(sse / n) + 2 * p + 2 * p * (p + 1) / (n - p - 1)
+
+
+def map_pairs(fit, max_pairs=MAX_MAPS, points=21):
+    """Factor pairs (i, j) for response maps: all pairs if there are at most max_pairs,
+    otherwise the max_pairs with the largest range of predicted values over their map
+    (the other factors at their centre), in factor order. Returns (pairs, all pairs)."""
+    every = list(combinations(range(fit.k), 2))
+    if len(every) <= max_pairs:
+        return every, every
+
+    def spread(pair):
+        i, j = pair
+        (x0, x1), (y0, y1) = fit.bounds[i], fit.bounds[j]
+        values = []
+        for a in range(points):
+            for b in range(points):
+                x = [0.0] * fit.k
+                x[i] = x0 + (x1 - x0) * a / (points - 1)
+                x[j] = y0 + (y1 - y0) * b / (points - 1)
+                values.append(fit.predict(x))
+        return max(values) - min(values)
+
+    ranked = sorted(every, key=lambda pr: -spread(pr))
+    return sorted(ranked[:max_pairs]), every
+
+
+def _cubic_on_interval(f, lo, hi):
+    """Points where f (a polynomial of degree <= 3 on [lo, hi]) can have its extremes:
+    the ends and the roots of f' (f is interpolated from 4 points)."""
+    if hi - lo <= 0:
+        return [lo]
+    ts = [lo + (hi - lo) * i / 3 for i in range(4)]
+    vs = [f(t) for t in ts]
+    # Newton divided differences -> power basis in u = (t - lo) / (hi - lo) * 3
+    d1 = [vs[i + 1] - vs[i] for i in range(3)]
+    d2 = [(d1[i + 1] - d1[i]) / 2 for i in range(2)]
+    d3 = (d2[1] - d2[0]) / 3
+    # f = v0 + d1[0] u + d2[0] u (u - 1) + d3 u (u - 1) (u - 2)
+    a3 = d3
+    a2 = d2[0] - 3 * d3
+    a1 = d1[0] - d2[0] + 2 * d3
+    # f'(u) = 3 a3 u^2 + 2 a2 u + a1
+    roots = []
+    if abs(a3) > 1e-14 * (abs(a2) + abs(a1) + 1e-300):
+        disc = (2 * a2) ** 2 - 12 * a3 * a1
+        if disc >= 0:
+            sq = math.sqrt(disc)
+            roots = [(-2 * a2 + sq) / (6 * a3), (-2 * a2 - sq) / (6 * a3)]
+    elif abs(a2) > 0:
+        roots = [-a1 / (2 * a2)]
+    out = [lo, hi]
+    for u in roots:
+        t = lo + u * (hi - lo) / 3
+        if lo < t < hi:
+            out.append(t)
     return out
+
+
+def numeric_optimum(fit, maximize=True, points=GRID_POINTS):
+    """Maximum (or minimum) of any fitted model of degree <= 3 per factor over the
+    coded box: the best points of a grid, each improved by coordinate-wise exact
+    one-dimensional optimisation until no coordinate changes."""
+    k, sign = fit.k, 1 if maximize else -1
+    m = max(3, int(points ** (1 / k)))
+    axes = [[lo + (hi - lo) * i / (m - 1) for i in range(m)] for lo, hi in fit.bounds]
+    scored = sorted(((sign * fit.predict(list(x)), x) for x in product(*axes)),
+                    reverse=True)
+    best = None
+    for _, start in scored[:5]:
+        x = list(start)
+        value = sign * fit.predict(x)
+        for _ in range(200):
+            improved = False
+            for i in range(k):
+                lo, hi = fit.bounds[i]
+
+                def along(t, i=i):
+                    z = list(x)
+                    z[i] = t
+                    return sign * fit.predict(z)
+                cand = max(_cubic_on_interval(along, lo, hi), key=along)
+                v = along(cand)
+                if v > value + 1e-12 * max(1.0, abs(value)):
+                    x[i], value, improved = cand, v, True
+            if not improved:
+                break
+        if best is None or value > best[1]:
+            best = (x, value)
+    return best[0], sign * best[1]
+
+
+def actual_equation(fit, centres, halves):
+    """Coefficients in actual units, x = (X - c) / h: [(name, coefficient)] with names
+    "Constant", "A", "A^2", "AB", "A^2B", ... (for an average block): every term is
+    expanded as a product of (X_i - c_i) / h_i."""
+    poly = {}
+    for t in fit.terms:
+        if t.kind == "block":
+            continue
+        expanded = {(): t.coef}
+        for i in monomial(t):
+            nxt = {}
+            for m, v in expanded.items():
+                for mm, vv in ((tuple(sorted(m + (i,))), v / halves[i]),
+                               (m, -v * centres[i] / halves[i])):
+                    nxt[mm] = nxt.get(mm, 0.0) + vv
+            expanded = nxt
+        for m, v in expanded.items():
+            poly[m] = poly.get(m, 0.0) + v
+    order = sorted(poly, key=lambda m: (len(m), len(set(m)) > 1, m))
+    return [(monomial_name(m), poly[m]) for m in order]
 
 
 def _rounded_setting(value, half):

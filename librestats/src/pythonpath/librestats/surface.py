@@ -208,6 +208,12 @@ def color(t):
     return "#{:02x}{:02x}{:02x}".format(*rgb)
 
 
+def grey(t):
+    """Greyscale for t in [0, 1]: dark (low) to light (high)."""
+    v = round(255 * (0.18 + 0.74 * min(max(t, 0.0), 1.0)))
+    return f"#{v:02x}{v:02x}{v:02x}"
+
+
 def _darker(hex_color, factor=0.7):
     return "#{:02x}{:02x}{:02x}".format(*(round(int(hex_color[k:k + 2], 16) * factor)
                                           for k in (1, 3, 5)))
@@ -288,8 +294,10 @@ def _text_width(s, size):
 
 
 def render_svg(surface, azimuth=-60.0, elevation=30.0, title="", x_title="x", y_title="y",
-               z_title="z", mesh_lines=True):
-    """The surface as an SVG document (str)."""
+               z_title="z", mesh_lines=True, greyscale=False, subtitle="", footnote=""):
+    """The surface as an SVG document (str). greyscale: grey shades instead of viridis
+    (journal style); subtitle under the title, footnote at the bottom."""
+    color = grey if greyscale else globals()["color"]
     if not 0 <= elevation <= 90:
         raise SurfaceError("The elevation must be between 0 and 90 degrees.")
     view = View(azimuth, elevation)
@@ -315,7 +323,7 @@ def render_svg(surface, azimuth=-60.0, elevation=30.0, title="", x_title="x", y_
     umin, umax = min(p[0] for p in proj), max(p[0] for p in proj)
     vmin, vmax = min(p[1] for p in proj), max(p[1] for p in proj)
 
-    left, right, top, bottom = 90, 150, 60, 50
+    left, right, top, bottom = 90, 150, 60 + (18 if subtitle else 0), 50 + (22 if footnote else 0)
     s = min((WIDTH - left - right) / (umax - umin), (HEIGHT - top - bottom) / (vmax - vmin))
     ox = left + ((WIDTH - left - right) - s * (umax - umin)) / 2
     oy = top + ((HEIGHT - top - bottom) - s * (vmax - vmin)) / 2
@@ -329,6 +337,10 @@ def render_svg(surface, azimuth=-60.0, elevation=30.0, title="", x_title="x", y_
            f'<rect x="0" y="0" width="{WIDTH}" height="{HEIGHT}" fill="#ffffff"/>']
     if title:
         svg.append(_text(WIDTH / 2, 32, title, size=17, bold=True, fill="#222222"))
+    if subtitle:
+        svg.append(_text(WIDTH / 2, 52, subtitle, size=12, fill="#444444"))
+    if footnote:
+        svg.append(_text(WIDTH / 2, HEIGHT - 12, footnote, size=12, fill="#333333"))
 
     # back panes with grid lines
     xb, yb = -xf, -yf

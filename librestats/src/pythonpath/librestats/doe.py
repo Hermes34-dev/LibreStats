@@ -21,7 +21,7 @@ import math
 import random
 from dataclasses import dataclass, field
 from collections import Counter
-from itertools import combinations, combinations_with_replacement
+from itertools import combinations, combinations_with_replacement, product
 
 from .ff_table import DESIGNS as FF_DESIGNS
 
@@ -277,6 +277,7 @@ def block_generators(fraction, blocks):
 # --- the design ---------------------------------------------------------------------
 
 CUBE, CENTRE, AXIAL, EDGE = 1, 0, -1, 2      # point types (as Minitab)
+OUTER = 3                                    # CCCD: outer factorial point at +-alpha
 
 
 @dataclass
@@ -326,6 +327,8 @@ class Design:
             return f"{kind[0].upper() + kind[1:]} ({cube} + {2 * k} axial points)"
         if self.kind == "bbd":
             return f"Box-Behnken, {k} factors"
+        if self.kind == "cccd":
+            return f"CCCD (Prieto et al.): 2^{k} inner + 2^{k} outer cube + {2 * k} axial points"
         return f"Plackett-Burman, {self.base_runs} runs"
 
     def generator_text(self):
@@ -462,12 +465,14 @@ def build_design(factors, kind, runs=None, centre_points=0, replicates=1, blocks
 
 # --- response surface designs -------------------------------------------------------
 
-RSM_KINDS = ("ccd", "bbd")
+RSM_KINDS = ("ccd", "bbd", "cccd")
 ALPHAS = ("rotatable", "orthogonal", "face", "custom")
 # Box & Hunter (1957): lambda4 of uniform-precision rotatable designs, k = 2..7
 UNIFORM_PRECISION = {2: 0.7844, 3: 0.8385, 4: 0.8704, 5: 0.8918, 6: 0.9070, 7: 0.9184}
 CCD_CUBE_BLOCKS = {1: 1, 2: 1, 3: 2, 5: 4}     # blocks per replicate -> blocks of the cube
 BLOCK_CENTRE = 2                               # default centre points per block
+CCCD_CENTRE = 6                                # CCCD default centre points (Leichtweis 2019)
+CCCD_LARGE = 5                                 # CCCD: warn from this many factors on
 
 # Box & Behnken (1960): sets of factors run as 2^m factorials with the others at 0
 _PAIRS = {k: tuple(combinations(range(k), 2)) for k in (3, 4, 5)}
@@ -606,6 +611,10 @@ def build_rsm(factors, kind, alpha="rotatable", custom_alpha=None, fraction=True
                                         "Central composite")
         groups, a, cube, centre, axial_centre, block_effects = _ccd_groups(
             k, alpha, custom_alpha, fraction, centre_points, axial_centre_points, per_rep)
+    elif kind == "cccd":
+        _per_replicate_blocks(blocks, replicates, (1,), "CCCD")
+        groups, a, centre = _cccd_groups(k, alpha, custom_alpha, centre_points)
+        cube, axial_centre, block_effects = None, None, []
     else:
         groups, centre = _bbd_groups(k, centre_points,
                                      _per_replicate_blocks(blocks, replicates,
@@ -629,6 +638,10 @@ def build_rsm(factors, kind, alpha="rotatable", custom_alpha=None, fraction=True
     points = [r.coded for r in runs]
     p = model_terms(k)
     properties.append(("Rotatable", "yes" if is_rotatable(points) else "no"))
+    ratio = rotatability_ratio(points)
+    if ratio is not None:
+        properties.append(("Rotatability ratio sum x_i^4 / sum x_i^2 x_j^2 (3 if rotatable)",
+                           round(ratio, 4)))
     orthogonal = blocks_orthogonal(runs)
     if orthogonal is not None:
         properties.append(("Blocks orthogonal to the quadratic model",
@@ -642,6 +655,9 @@ def build_rsm(factors, kind, alpha="rotatable", custom_alpha=None, fraction=True
     distinct = Counter((r.block, tuple(r.coded)) for r in runs)
     pure = sum(n - 1 for n in distinct.values())
     properties.append(("Pure-error degrees of freedom (repeated points)", pure))
+    properties.append(("Lack-of-fit degrees of freedom", residual - pure))
+    properties.append(("Distinct design points", len({tuple(r.coded) for r in runs})))
+    properties.append(("Highest estimable model", estimable_model(points)))
     if pure == 0:
         notes.append("No point is repeated, so lack of fit cannot be tested; add centre "
                      "points.")
@@ -654,12 +670,20 @@ def build_rsm(factors, kind, alpha="rotatable", custom_alpha=None, fraction=True
         notes.append("The axial points (coded +-alpha) lie outside the Low-High range; check "
                      "that these settings are possible, or choose an inscribed design.")
 
+    if kind == "cccd":
+        if k >= CCCD_LARGE:
+            notes.append(f"The outer cube doubles the factorial part: {total} runs for {k} "
+                         "factors.")
+        notes.append("Low and High are the extreme levels (coded +-alpha): every run, "
+                     "including the axial and outer-cube points, is within Low-High.")
+        notes.append("Most textbooks call the plain central composite design (cube + axial "
+                     "+ centre) 'circumscribed'; this variant adds the outer cube.")
+
     runs, seed = _run_order(runs, n_blocks, randomize, seed)
     base = sum(1 for g in groups for ptype, _ in g if ptype != CENTRE)
+    scale = a if (inscribed and kind == "ccd") or kind == "cccd" else 1.0
     return Design(kind, factors, base, runs, replicates, blocks, centre, cube, block_effects,
-                  seed,
-                  notes, a, a if inscribed and kind == "ccd" else 1.0, axial_centre,
-                  properties)
+                  seed, notes, a, scale, axial_centre, properties)
 
 
 def _ccd_groups(k, alpha, custom_alpha, fraction, centre_points, axial_centre_points,
@@ -710,6 +734,97 @@ def _ccd_groups(k, alpha, custom_alpha, fraction, centre_points, axial_centre_po
     groups = [g + [(CENTRE, [0] * k)] * centre for g in groups]
     groups.append([(AXIAL, r) for r in axial] + [(CENTRE, [0] * k)] * axial_centre)
     return groups, a, cube, centre, axial_centre, gens
+
+
+def cccd_alpha(k):
+    """Default axial distance of the CCCD: (2^k)^(1/4), the rotatable value of the inner cube."""
+    return (2 ** k) ** 0.25
+
+
+def _cccd_groups(k, alpha, custom_alpha, centre_points):
+    """Circumscribed CCD of Leichtweis et al. (2019): inner 2^k cube at +-1, 2k axial
+    points at +-alpha, outer 2^k cube at +-alpha, centre points; factor 1 changes
+    slowest in each cube."""
+    if not 2 <= k <= max(UNIFORM_PRECISION):
+        raise DesignError(f"CCCD designs here have 2 to {max(UNIFORM_PRECISION)} factors.")
+    if alpha == "custom":
+        if custom_alpha is None or custom_alpha <= 1:
+            raise DesignError("The CCCD needs alpha greater than 1 (at alpha = 1 the outer "
+                              "cube is the inner cube).")
+        a = custom_alpha
+    elif alpha == "rotatable":
+        a = cccd_alpha(k)
+    else:
+        raise DesignError("The CCCD uses alpha = (2^k)^(1/4) or a custom alpha.")
+    centre = CCCD_CENTRE if centre_points is None else centre_points
+    cube = [list(r) for r in product((-1, 1), repeat=k)]
+    axial = [[(s * a if j == i else 0.0) for j in range(k)] for i in range(k) for s in (-1, 1)]
+    group = ([(CUBE, r) for r in cube] + [(AXIAL, r) for r in axial] +
+             [(OUTER, [a * v for v in r]) for r in cube] + [(CENTRE, [0] * k)] * centre)
+    return [group], a, centre
+
+
+def rotatability_ratio(points):
+    """sum x_i^4 / sum x_i^2 x_j^2, averaged over factors and pairs; 3 for a rotatable
+    design (Box & Hunter, 1957). None if the mixed moments vanish."""
+    k = len(points[0])
+    if k < 2:
+        return None
+    fourth = sum(p[i] ** 4 for p in points for i in range(k)) / k
+    pairs = list(combinations(range(k), 2))
+    mixed = sum(p[i] ** 2 * p[j] ** 2 for p in points for i, j in pairs) / len(pairs)
+    return fourth / mixed if mixed else None
+
+
+def polynomial_row(x, degree):
+    """All monomials of the factors up to the given degree (constant first)."""
+    return [math.prod(x[i] for i in m) for d in range(degree + 1)
+            for m in combinations_with_replacement(range(len(x)), d)]
+
+
+def matrix_rank(rows, tol=1e-9):
+    """Rank by Gaussian elimination with full pivoting, columns scaled to unit length."""
+    if not rows:
+        return 0
+    m = [list(map(float, r)) for r in rows]
+    ncol = len(m[0])
+    for j in range(ncol):
+        norm = math.sqrt(sum(r[j] ** 2 for r in m))
+        if norm:
+            for r in m:
+                r[j] /= norm
+    rank, cols = 0, list(range(ncol))
+    while rank < len(m) and cols:
+        i, j = max(((i, j) for i in range(rank, len(m)) for j in cols),
+                   key=lambda ij: abs(m[ij[0]][ij[1]]))
+        if abs(m[i][j]) <= tol:
+            break
+        m[rank], m[i] = m[i], m[rank]
+        pivot = m[rank]
+        for r in m[rank + 1:]:
+            f = r[j] / pivot[j]
+            if f:
+                for c in cols:
+                    r[c] -= f * pivot[c]
+        cols.remove(j)
+        rank += 1
+    return rank
+
+
+def estimable_model(points):
+    """Highest polynomial whose terms are all estimable (rank of the model matrix), and
+    the rank of the next one, e.g. 'quadratic (full cubic aliased: rank 17 of 20)'."""
+    names = ("constant", "linear", "quadratic", "full cubic")
+    best = None
+    for degree in range(1, 4):
+        rows = [polynomial_row(p, degree) for p in points]
+        rank, terms = matrix_rank(rows), len(rows[0])
+        if rank < terms:
+            if best is None:
+                return f"none ({names[degree]} aliased: rank {rank} of {terms})"
+            return f"{best} ({names[degree]} aliased: rank {rank} of {terms})"
+        best = names[degree]
+    return f"{best} (higher orders not tested)"
 
 
 def _bbd_groups(k, centre_points, per_rep):

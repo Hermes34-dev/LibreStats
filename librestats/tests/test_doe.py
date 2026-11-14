@@ -6,7 +6,7 @@ import os
 import sys
 import unittest
 from collections import Counter
-from itertools import combinations
+from itertools import combinations, product
 
 import numpy as np
 
@@ -341,6 +341,102 @@ class TestBoxBehnken(unittest.TestCase):
         self.assertTrue(block_dummies_orthogonal(d))
         with self.assertRaisesRegex(doe.DesignError, "replicates times 1"):
             doe.build_rsm(numeric(5), "bbd", blocks=3)
+
+
+class TestCCCD(unittest.TestCase):
+    """CCCD of Leichtweis et al. (2019): inner cube, axial points, outer cube at +-alpha,
+    centre points; Low/High are the extreme levels. Properties checked against numpy."""
+
+    def design(self, k=3, **kwargs):
+        return doe.build_rsm(numeric(k), "cccd", randomize=False, **kwargs)
+
+    def test_published_layout(self):
+        d = self.design()
+        a = 8 ** 0.25
+        self.assertAlmostEqual(d.alpha, a, places=15)
+        self.assertEqual(len(d.runs), 28)
+        self.assertEqual([r.ptype for r in d.runs], [1] * 8 + [-1] * 6 + [3] * 8 + [0] * 6)
+        self.assertEqual({r.block for r in d.runs}, {1})
+        cube = [list(p) for p in product((-1, 1), repeat=3)]          # X1 slowest
+        self.assertEqual([r.coded for r in d.runs[:8]], cube)
+        self.assertEqual([r.coded for r in d.runs[14:22]], [[a * v for v in p] for p in cube])
+        axial = [r.coded for r in d.runs[8:14]]
+        self.assertEqual(axial, [[-a, 0, 0], [a, 0, 0], [0, -a, 0], [0, a, 0], [0, 0, -a],
+                                 [0, 0, a]])
+        for i in range(3):
+            levels = sorted({round(r.coded[i], 12) for r in d.runs})
+            self.assertEqual(levels, [round(v, 12) for v in (-a, -1, 0, 1, a)])
+
+    def test_range_convention(self):
+        # Low/High (10, 30) are +-alpha: step = 20 / (2 alpha), every run inside the limits
+        d = self.design()
+        f = d.factors[0]
+        step = 20 / (2 * d.alpha)
+        for c in (-d.alpha, -1, 0, 1, d.alpha):
+            self.assertAlmostEqual(f.actual(c, d.scale), 20 + c * step)
+        settings = [f.setting(r.coded[0], d.scale) for r in d.runs]
+        self.assertEqual((min(settings), max(settings)), (10.0, 30.0))
+        self.assertFalse(any("outside" in n for n in d.notes))
+
+    def test_properties_against_numpy(self):
+        for k in (2, 3, 4):
+            d = self.design(k)
+            x = np.array([r.coded for r in d.runs], float)
+            props = dict(d.properties)
+            n, p = len(x), doe.model_terms(k)
+            distinct = len({tuple(np.round(r, 12)) for r in x})
+            self.assertEqual(n, 2 * 2 ** k + 2 * k + 6)
+            self.assertEqual(props["Distinct design points"], distinct)
+            self.assertEqual(distinct, 2 * 2 ** k + 2 * k + 1)
+            self.assertEqual(props["Residual degrees of freedom"], n - p)
+            self.assertEqual(props["Pure-error degrees of freedom (repeated points)"], 5)
+            self.assertEqual(props["Lack-of-fit degrees of freedom"], distinct - p)
+            ratio = (x[:, 0] ** 4).sum() / (x[:, 0] ** 2 * x[:, 1] ** 2).sum()
+            self.assertAlmostEqual(
+                props["Rotatability ratio sum x_i^4 / sum x_i^2 x_j^2 (3 if rotatable)"],
+                round(ratio, 4))
+            self.assertEqual(props["Rotatable"], "no")
+            cubic = np.array([doe.polynomial_row(r, 3) for r in x])
+            rank = np.linalg.matrix_rank(cubic)
+            expected = "full cubic (higher orders not tested)" if rank == cubic.shape[1] \
+                else f"quadratic (full cubic aliased: rank {rank} of {cubic.shape[1]})"
+            self.assertEqual(props["Highest estimable model"], expected)
+        props = dict(self.design().properties)            # the published k = 3 numbers
+        self.assertEqual((props["Distinct design points"], props["Residual degrees of freedom"],
+                          props["Lack-of-fit degrees of freedom"]), (23, 18, 13))
+        self.assertEqual(props["Highest estimable model"],
+                         "quadratic (full cubic aliased: rank 17 of 20)")
+        self.assertAlmostEqual(
+            props["Rotatability ratio sum x_i^4 / sum x_i^2 x_j^2 (3 if rotatable)"], 1.2222)
+
+    def test_matrix_rank_against_numpy(self):
+        rng = np.random.default_rng(4)
+        for rows, cols, rank in ((12, 6, 6), (12, 8, 5), (5, 9, 5), (30, 20, 13)):
+            m = rng.normal(size=(rows, rank)) @ rng.normal(size=(rank, cols)) * \
+                rng.uniform(0.01, 100, size=cols)
+            self.assertEqual(doe.matrix_rank(m.tolist()), np.linalg.matrix_rank(m), (rows, cols))
+        # a CCD is quadratic-estimable, a two-level factorial with centre points is not
+        d = doe.build_rsm(numeric(3), "ccd", randomize=False)
+        self.assertEqual(dict(d.properties)["Highest estimable model"],
+                         "quadratic (full cubic aliased: rank 14 of 20)")
+        full = [list(p) for p in product((-1, 1), repeat=3)] + [[0, 0, 0]] * 3
+        self.assertEqual(doe.estimable_model(full),
+                         "linear (quadratic aliased: rank 8 of 10)")
+
+    def test_options_and_errors(self):
+        d = self.design(centre_points=3, alpha="custom", custom_alpha=2.0, replicates=2)
+        self.assertEqual(len(d.runs), 2 * (8 + 6 + 8 + 3))
+        self.assertEqual(d.alpha, 2.0)
+        d = self.design(replicates=2, blocks=2)
+        self.assertEqual(sorted({r.block for r in d.runs}), [1, 2])
+        for kwargs, msg in (({"alpha": "custom", "custom_alpha": 1.0}, "greater than 1"),
+                            ({"alpha": "face"}, "custom alpha"),
+                            ({"alpha": "orthogonal"}, "custom alpha"),
+                            ({"blocks": 2}, "replicates times 1")):
+            with self.assertRaisesRegex(doe.DesignError, msg):
+                self.design(**kwargs)
+        self.assertTrue(any("doubles" in n for n in self.design(5).notes))
+        self.assertFalse(any("doubles" in n for n in self.design(4).notes))
 
 
 class TestReadFactors(unittest.TestCase):

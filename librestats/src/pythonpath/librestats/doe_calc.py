@@ -27,10 +27,16 @@ REFERENCES = {
             "Box, G. E. P., & Hunter, J. S. (1957). Annals of Mathematical Statistics, 28(1), "
             "195-241."],
     "bbd": ["Box, G. E. P., & Behnken, D. W. (1960). Technometrics, 2(4), 455-475."],
+    "cccd": ["Leichtweis, M. G., Pereira, C., Prieto, M. A., et al. (2019). Molecules, 24(3), "
+             "573.",
+             "Box, G. E. P., & Wilson, K. B. (1951). Journal of the Royal Statistical Society "
+             "B, 13(1), 1-45."],
 }
 POINT_TYPES = {
     "ccd": "Point type: 1 = factorial (cube) point, -1 = axial point, 0 = centre point.",
     "bbd": "Point type: 2 = edge midpoint, 0 = centre point.",
+    "cccd": "Point type: 1 = inner factorial point (+-1), -1 = axial point, 3 = outer "
+            "factorial point (+-alpha), 0 = centre point.",
 }
 ALPHA_NAMES = {"rotatable": "rotatable", "orthogonal": "orthogonal blocking",
                "face": "face-centred", "custom": "custom"}
@@ -40,7 +46,7 @@ ALPHA_NAMES = {"rotatable": "rotatable", "orthogonal": "orthogonal blocking",
 class DesignOptions:
     range_text: str = ""          # factor table: Name, Unit, Low, High
     has_labels: bool = True
-    kind: str = "full"            # full | fractional | pb | ccd | bbd
+    kind: str = "full"            # full | fractional | pb | ccd | bbd | cccd
     runs: int = None              # fractional / Plackett-Burman; None: automatic
     centre_points: int = 0        # per block (central composite in blocks: per cube block);
                                   # response surface designs: None = automatic
@@ -89,7 +95,13 @@ def summary(design, alpha_kind="rotatable"):
                    ["Centre points in the axial block", design.axial_centre_points]]
     else:
         fitted.append(["Centre points per block", design.centre_points])
-    if design.alpha is not None:
+    if design.kind == "cccd":
+        default = abs(design.alpha - doe.cccd_alpha(k)) < 1e-12
+        fitted.append(["Axial distance alpha (coded)",
+                       f"{design.alpha:.4f} ("
+                       + (f"(2^{k})^(1/4)" if default else "custom")
+                       + "; Low and High = extreme levels +-alpha)"])
+    elif design.alpha is not None:
         fitted.append(["Axial distance alpha (coded)",
                        f"{design.alpha:.4f} ({ALPHA_NAMES[alpha_kind]}"
                        + (", inscribed: +-alpha at Low and High)" if design.scale != 1 else ")")])
@@ -103,6 +115,11 @@ def summary(design, alpha_kind="rotatable"):
         levels = (-a, -1, 0, 1, a)
         fitted.append(["Factor", "Name", "Unit", "-alpha", "Low (-1)", "Centre (0)",
                        "High (+1)", "+alpha"])
+    elif design.kind == "cccd":
+        a = design.alpha
+        levels = (-a, -1, 0, 1, a)
+        fitted.append(["Factor", "Name", "Unit", "Low (-alpha)", "-1", "Centre (0)", "+1",
+                       "High (+alpha)"])
     elif design.kind == "bbd":
         levels = (-1, 0, 1)
         fitted.append(["Factor", "Name", "Unit", "Low (-1)", "Centre (0)", "High (+1)"])
@@ -205,4 +222,5 @@ def _write(sheet, col, row, rows):
 
 # menu commands; each opens the dialog with its design type selected
 RUNNERS = {"doeFull": run_design, "doeFractional": run_design,
-           "doePlackettBurman": run_design, "doeCCD": run_design, "doeBoxBehnken": run_design}
+           "doePlackettBurman": run_design, "doeCCD": run_design, "doeBoxBehnken": run_design,
+           "doeCCCD": run_design}

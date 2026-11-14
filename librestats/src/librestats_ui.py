@@ -28,17 +28,27 @@ arguments Command, Document, Range, HasLabels and command-specific options:
   Command="posthocTukey", "posthocGamesHowell"   GroupRange, Alpha
   Command="posthocDunnett"    GroupRange, Control (empty = first group), Alternative, Alpha
   Command="posthocDunn"       GroupRange, Adjust="holm|bonferroni|sidak|bh", Alpha
-  Command="doeDesign"         Design="full|fractional|pb|ccd|bbd", Runs (empty = automatic),
+  Command="doeDesign"         Design="full|fractional|pb|ccd|bbd|cccd", Runs (empty = automatic),
                               CentrePoints, Replicates, Blocks, Randomize, Seed (empty =
                               random), Responses (comma-separated); Range: the factor table.
                               Central composite: Alpha="rotatable|orthogonal|face|<number>",
-                              FractionalCube, Inscribed, AxialCentrePoints. Response surface
+                              FractionalCube, Inscribed, AxialCentrePoints (CCCD: Alpha
+                              "rotatable" = (2^k)^(1/4), or a number). Response surface
                               designs: empty centre points = automatic
   Command="doeAnalyseScreening"  Range: the design table; Response (empty = first),
                               Model="2fi|main", Alpha, Charts
   Command="doeAnalyseRSM"     Range: the design table; Response (empty = first),
-                              Model="quadratic|interaction|linear", Alpha, XFactor, YFactor
-                              (factor names or letters; empty = first two), Charts
+                              Model="quadratic|interaction|linear|cubic" (cubic =
+                              reduced cubic), Alpha, XFactor, YFactor (factor names or
+                              letters: one map of these two; empty = every factor pair,
+                              at most 3 with the largest predicted range), Charts,
+                              Reduction="none|manual|backward|subsets", ReductionAlpha
+                              (0.05), Hierarchy (True), Locked, Remove (comma-separated
+                              term names, e.g. "B^2, AB"), Top (5), Rank (1),
+                              ExcludeAliased (False), Goal="max|min", Fixed=
+                              "optimum|centre|custom", FixedValues ("Time=13; C=50"),
+                              Residuals="raw|studentized", Anchor="optimum|centre",
+                              Greyscale (False)
 
 execute() returns the name of the sheet that was created.
 """
@@ -193,7 +203,7 @@ class LibreStatsHandler(unohelper.Base, XJobExecutor, XJob):
                 alpha, custom = "custom", float(alpha)
             opts = doe_calc.DesignOptions(
                 **common, kind=kind, runs=whole("Runs"),
-                centre_points=whole("CentrePoints", None if kind in ("ccd", "bbd") else 0),
+                centre_points=whole("CentrePoints", None if kind in ("ccd", "bbd", "cccd") else 0),
                 axial_centre_points=whole("AxialCentrePoints"),
                 replicates=whole("Replicates", 1), blocks=whole("Blocks", 1),
                 randomize=bool(args.get("Randomize", True)), seed=whole("Seed"),
@@ -214,7 +224,19 @@ class LibreStatsHandler(unohelper.Base, XJobExecutor, XJob):
                 **common, response=str(args.get("Response", "")),
                 model=str(args.get("Model", "quadratic")), alpha=float(args.get("Alpha", 0.05)),
                 x_factor=str(args.get("XFactor", "")), y_factor=str(args.get("YFactor", "")),
-                charts=bool(args.get("Charts", True)))
+                charts=bool(args.get("Charts", True)),
+                reduction=str(args.get("Reduction", "none")),
+                reduction_alpha=float(args.get("ReductionAlpha", 0.05)),
+                hierarchy=bool(args.get("Hierarchy", True)),
+                locked=tuple(t for t in str(args.get("Locked", "")).split(",") if t.strip()),
+                remove=tuple(t for t in str(args.get("Remove", "")).split(",") if t.strip()),
+                top=int(args.get("Top", 5)), rank=int(args.get("Rank", 1)),
+                exclude_aliased=bool(args.get("ExcludeAliased", False)),
+                goal=str(args.get("Goal", "max")), fixed=str(args.get("Fixed", "optimum")),
+                fixed_values=str(args.get("FixedValues", "")),
+                residuals=str(args.get("Residuals", "raw")),
+                anchor=str(args.get("Anchor", "optimum")),
+                greyscale=bool(args.get("Greyscale", False)))
             return rsm_calc.run_rsm(doc, opts)
 
         if command == "surface":

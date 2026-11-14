@@ -79,6 +79,7 @@ LibreStats ▸ Data Preparation ▸ Outliers…
                                                 ▸ Plackett-Burman…
                                     ▸ Response Surface ▸ Central Composite (CCD)…
                                                        ▸ Box-Behnken…
+                                                       ▸ CCCD (Prieto et al.)…
                        ▸ Analyse Screening Design…
                        ▸ Analyse Response Surface Design…
 ```
@@ -816,7 +817,7 @@ Centre points are added to each block. Runs are randomised within blocks; the bl
 |---|---|
 | Std order | the run's place in the unrandomised design (Yates order, A changing fastest; replicate by replicate, block by block, centre points last in each block) |
 | Run order | the order in which to carry out the runs; the sheet is sorted by it |
-| Point type | 1 = factorial point, 0 = centre point (response surface designs: −1 = axial point, 2 = Box-Behnken edge midpoint) |
+| Point type | 1 = factorial point, 0 = centre point (response surface designs: −1 = axial point, 2 = Box-Behnken edge midpoint, 3 = CCCD outer factorial point at ±α) |
 | Block | 1, 2, … |
 | *factor* (coded) | −1, 0, +1 |
 | *factor* (*unit*) | the actual setting |
@@ -832,6 +833,9 @@ Response surface designs have three or more levels per factor, so a **full quadr
 |---|---|---|---|
 | Central Composite (CCD)… | factorial (cube) points + 2k axial points at ±α on each axis + centre points (Box & Wilson, 1951) | 2 to 7 | 13, 20, 31, 32, 53, 92 for k = 2 … 7 |
 | Box-Behnken… | each pair (k = 3–5) or triple (k = 6, 7) of factors at ±1 with the others at 0, + centre points (Box & Behnken, 1960); 3 levels, no corner points | 3 to 7 | 15, 27, 46, 54, 62 |
+| CCCD (Prieto et al.)… | a CCD with a **second, outer 2^k factorial at ±α**: inner cube at ±1, 2k axial points at ±α, outer cube at ±α, centre points (Leichtweis et al., 2019); 5 levels per factor. Low and High are the extremes ±α | 2 to 7 (asks before generating 5 or more) | 18, 28, 46, 80, 142, 276 for k = 2 … 7 |
+
+**CCCD.** The textbook CCD tests only the corners of the inner ±1 cube, so the corners of the whole operating range are extrapolated. The CCCD measures them directly with the outer cube, and the extra points add degrees of freedom for error and lack of fit. The price is size: the factorial part is doubled (2·2^k + 2k + n₀ runs), and the design is not rotatable. Leichtweis et al. (2019) call it a "circumscribed central composite design (CCCD)" with five levels and 28 combinations (k = 3, 6 centre points). Note that in most textbooks a *circumscribed CCD* means the plain CCD (20 runs for k = 3); this variant adds the outer cube. Runs are in the published standard order: inner cube (factor A changes slowest, the last factor fastest), axial points (A −α, A +α, B −α, …), outer cube in the same order, then the centre points.
 
 #### Factor table
 
@@ -852,7 +856,7 @@ Before opening the dialog, type the factors on a sheet, one per row, and select 
 
 - Tick *First row contains column headings* if the table has a header row (as above).
 - **Only numeric levels.** A factor with text levels (e.g. a catalyst type Pd/Pt) cannot be used in a response surface design; the dialog stops with a message naming it. Put such factors in a screening design (section 9.1), or make a separate response surface design for each category.
-- 2 to 7 factors for a CCD, 3 to 7 for Box-Behnken. Factors get the letters A, B, C, … in table order (I is skipped).
+- 2 to 7 factors for a CCD or CCCD, 3 to 7 for Box-Behnken. Factors get the letters A, B, C, … in table order (I is skipped).
 
 **From actual to coded values.** Each factor is coded around the midpoint of Low and High:
 
@@ -866,6 +870,7 @@ so Low → −1, the midpoint → 0 and High → +1. LibreStats builds the desig
 | CCD, *Inscribed* ticked | the **outer limits**: ±α is put at Low and High, the cube shrinks to ±1/α | Temperature 40, 45.86, 60, 74.14, 80 °C; Time 10, 12.93, 20, 27.07, 30 min |
 | CCD, face-centred (α = 1) | the cube levels, which are also the extremes: three levels per factor | Temperature 40, 60, 80 °C; Time 10, 20, 30 min |
 | Box-Behnken | the extremes: three levels −1, 0, +1 | Temperature 40, 60, 80 °C; Time 10, 20, 30 min; pH 5, 6, 7 |
+| CCCD | the **extremes ±α** (always): centre = (Low + High) / 2, one coded unit = (High − Low) / (2α). Every run, including the axial and outer-cube points, stays within Low–High | Temperature 40, 45.86, 60, 74.14, 80 °C; Time 10, 12.93, 20, 27.07, 30 min |
 
 So for a standard CCD, **choose Low and High as the cube levels, not as the limits of what is possible.** If the axial settings beyond them are impossible (e.g. a negative time, or a temperature the equipment cannot reach), tick *Inscribed* or choose the face-centred α. LibreStats warns when α > 1 puts the axial points outside Low–High, and names any factor whose setting at −α would become negative.
 
@@ -879,6 +884,7 @@ The dialog has the shared options of section 9.1 (replicates, blocks, randomisat
 |---|---|---|
 | Axial distance α (CCD) | **rotatable**: α = n_F^(1/4) (n_F = number of cube points), so the prediction variance depends only on the distance from the centre; **orthogonal blocking**: the α that makes the blocks orthogonal (needs blocks); **face-centred**: α = 1, three levels, axial points on the faces of the cube; **custom**: any positive value | rotatable |
 | Resolution V fraction as factorial part (CCD, 5 or more factors) | the cube is the smallest fraction of resolution V or higher (2^(5−1), 2^(6−1), 2^(7−1)) instead of the full 2^k; all quadratic-model terms stay estimable | on |
+| Axial distance α (CCCD) | **rotatable** choice: α = (2^k)^(1/4) (1.6818 for k = 3; stored at full precision, shown with 4 decimals), the rotatable value of the inner cube, although the CCCD itself is not rotatable; **custom**: any value greater than 1. Orthogonal blocking and face-centred are refused | (2^k)^(1/4) |
 | Inscribed (CCD) | the axial points are put at Low and High and the cube is shrunk to ±1/α in actual units. Use it when Low and High are limits that cannot be exceeded | off |
 | Centre points | empty = automatic, see below. Unblocked: per replicate; blocked: per block (CCD: per cube block) | automatic |
 | Centre points in the axial block (CCD in blocks) | empty = automatic | automatic |
@@ -887,6 +893,7 @@ The dialog has the shared options of section 9.1 (replicates, blocks, randomisat
 
 - **CCD, unblocked:** the uniform-precision number of Box & Hunter (1957), at which the prediction variance at the centre is about the same as at distance 1: N = λ₄ (n_F + 2α²)² / n_F with their tabulated λ₄. This gives 5, 6, 7, 6 (half fraction) / 10 (full), 9 / 15, 14 / 21 centre points for k = 2 … 7, as in the published table.
 - **Box-Behnken, unblocked:** Box & Behnken's (1960) numbers: 3, 3, 6, 6, 6 for k = 3 … 7.
+- **CCCD:** 6, as in Leichtweis et al. (2019).
 - **In blocks:** 2 per block (CCD: 2 per cube block and 2 in the axial block), so each block has its own repeated points.
 
 #### Blocks
@@ -895,6 +902,7 @@ The dialog has the shared options of section 9.1 (replicates, blocks, randomisat
 |---|---|
 | CCD | 1; 2 = cube block + axial block; 3 = cube split in 2 + axial block; 5 = cube split in 4 + axial block. The cube is split by confounding high-order interactions with blocks; splits that would confound a two-factor interaction are refused |
 | Box-Behnken | 1; for 4 factors also 3 orthogonal blocks (pairs AB + CD, AD + BC, AC + BD) |
+| CCCD | 1 (so *Blocks* is 1 or the number of replicates) |
 
 As for screening designs, *Blocks* is the total: replicates × the blocks per replicate.
 
@@ -911,6 +919,10 @@ The summary checks the design that was built rather than relying on rules of thu
 | Terms in the full quadratic model | 1 + 2k + k(k − 1)/2 |
 | Residual degrees of freedom | runs − terms − (blocks − 1) |
 | Pure-error degrees of freedom | from repeated points (centre points, replicates) in the same block; with 0, lack of fit cannot be tested |
+| Lack-of-fit degrees of freedom | residual − pure error (unblocked: distinct points − terms) |
+| Distinct design points | e.g. 2·2^k + 2k + 1 for a CCCD (23 for k = 3) |
+| Rotatability ratio Σx_i⁴ / Σx_i²x_j² | averaged over factors and pairs; 3 for a rotatable design (1.2222 for the k = 3 CCCD, 2 for the k = 3 Box-Behnken) |
+| Highest estimable model | the rank of the model matrix of the linear, quadratic and full cubic polynomials: the highest one with full rank, and the rank of the next, e.g. *quadratic (full cubic aliased: rank 17 of 20)* for the k = 3 CCCD (a CCD gives rank 14 of 20). For k = 2 the CCCD even supports the full cubic |
 
 The factor table shows the actual settings at −α, −1, 0, +1 and +α (Box-Behnken: −1, 0, +1). Actual settings are rounded to about 4 significant digits of the half-range (e.g. 948.8 rpm, 114.88 °C); coded values are kept at full precision and shown with up to 4 decimals. If α > 1, a note warns that the axial points lie outside Low–High, and names any factor whose setting at −α would be negative.
 
@@ -920,7 +932,7 @@ The factor table shows the actual settings at −α, −1, 0, +1 and +α (Box-Be
 
 After the runs are done and the responses are typed into the shaded columns of a Design sheet (section 9.1), this tool estimates which factors matter.
 
-**Only for screening designs** (full or fractional factorial, Plackett-Burman). A **response surface design** (central composite or Box-Behnken, section 9.2) has axial or edge points and needs a quadratic model: use *Analyse Response Surface Design* (section 9.4). Opening this tool on such a Design sheet shows a message saying so.
+**Only for screening designs** (full or fractional factorial, Plackett-Burman). A **response surface design** (central composite, Box-Behnken or CCCD, section 9.2) has axial or edge points and needs a quadratic model: use *Analyse Response Surface Design* (section 9.4). Opening this tool on such a Design sheet shows a message saying so.
 
 #### Dialog
 
@@ -996,6 +1008,10 @@ Effects beyond ME are likely active; effects beyond SME remain so even after all
 
 With centre points, the centre-point term estimates mean(centre) − mean(factorial), adjusted for blocks. Its sum of squares (without blocks, n_F n_C (ȳ_F − ȳ_C)² / (n_F + n_C)) is tested with F against **pure error**, which needs at least 2 centre points or replicated runs (Montgomery, 2017, section 6.8). Significant curvature means that a first-order model with interactions does not describe the region: augment the design to a response surface design (section 9.2).
 
+#### Diagnostics per run (outliers, leverage, influence)
+
+When the model has residual degrees of freedom, the report lists every run with its residuals, leverage, outlier test (externally studentized residual with a Bonferroni correction), **Cook's distance**, flags, one verdict line per flagged run and an influence plot, as for the response surface analysis (section 9.4, *Diagnostics per run*). A saturated model (no residual df, Lenth's method) has no residuals, so no diagnostics.
+
 #### Charts (native Calc charts)
 
 - **Pareto chart:** horizontal bars of |t| (or Lenth's pseudo-t), largest on top. It has a red reference line at the critical t; with Lenth's method, red ME and orange SME lines.
@@ -1007,14 +1023,14 @@ The tables the charts are drawn from are on the report sheet, to the left of the
 
 **LibreStats → DOE / RSM → Analyse Response Surface Design…**
 
-Fits a quadratic model to the results of a response surface design (central composite or Box-Behnken, section 9.2), and reports where the response is highest or lowest. It also works on two-level factorials with centre points, but only with the model without square terms (see below).
+Fits a quadratic model to the results of a response surface design (central composite, Box-Behnken or CCCD, section 9.2), and reports where the response is highest or lowest. It also works on two-level factorials with centre points, but only with the model without square terms (see below).
 
 #### Required table layout
 
 The same layout as for the screening analysis (section 9.3, *Required table layout*): a Design sheet made with *New Design*, with the responses typed into the shaded columns. Two differences:
 
-- The **coded values may be any numbers**, e.g. axial points at ±1.414 or ±1.682. *Point type* may be `1` (cube), `-1` (axial), `0` (centre) or `2` (Box-Behnken edge midpoint); the analysis does not use it.
-- The **actual-level columns are used:** they must be **numbers** (no text levels), and must agree with the coded columns (actual = centre + half-range × coded). LibreStats reads each factor's centre and half-range from them, to report the results in actual units. The settings on a Design sheet are rounded (e.g. 31.72 °C for −α), so LibreStats recognises the rows that hold the exact Low and High you typed: the cube points in a standard CCD, or the axial points in an inscribed one. A table made by hand with unrounded values also works.
+- The **coded values may be any numbers**, e.g. axial points at ±1.414 or ±1.682. *Point type* may be `1` (cube), `-1` (axial), `0` (centre), `2` (Box-Behnken edge midpoint) or `3` (CCCD outer cube); the analysis does not use it.
+- The **actual-level columns are used:** they must be **numbers** (no text levels), and must agree with the coded columns (actual = centre + half-range × coded). LibreStats reads each factor's centre and half-range from them, to report the results in actual units. The settings on a Design sheet are rounded (e.g. 31.72 °C for −α), so LibreStats recognises the rows that hold the exact Low and High you typed: the cube points in a standard CCD, or the points at ±α in an inscribed CCD or a CCCD. A table made by hand with unrounded values also works.
 
 As before, the rows can be in any order, an empty response cell leaves that run out, and the design needs more runs with a response than model terms (6 for 2 factors, 10 for 3, 15 for 4).
 
@@ -1024,36 +1040,151 @@ As before, the rows can be in any order, an empty response cell leaves that run 
 |---|---|---|
 | Design table | the table on a Design sheet (header row included); filled in automatically when a Design sheet is active | active Design sheet |
 | Response | one of the response columns | the first |
-| Model | **full quadratic** (linear, squares, two-factor interactions) / linear + two-factor interactions / linear | full quadratic |
+| Model | **full quadratic** (linear, squares, two-factor interactions) / linear + two-factor interactions / linear / reduced cubic | full quadratic |
 | Significance level | α for the tests | 0.05 |
-| Response map and 3D surface | draw them, for the chosen *horizontal* and *vertical* factor; all other factors are held at their centre | on; first two factors |
+| Model reduction | **None** / **Manual** (remove the terms selected in *Terms to remove*) / **Backward elimination** (p-value, α-out 0.05 or 0.10) / **All subsets (AICc)** (show the top N models, continue with rank r); see *Model reduction* below | None |
+| Keep model hierarchy | a term keeps its lower-order terms (its parents) | on |
+| Locked terms | terms that are never removed, e.g. a factor kept for chemical reasons; the constant and block terms are always kept | none |
+| Exclude aliased terms from selection | reduced cubic: leave the terms marked *aliased with* / *part of the … alias* out of the starting model | off |
+| Charts | response maps and 3D surfaces for **every factor pair** (at most 3, see below), observed vs predicted, residuals by factor, optimum trace and the influence plot | on |
+| Other factors fixed at | maps and surfaces: the factors not shown are held at the **optimum** (the predicted maximum or minimum, see *Optimum*), the **centre**, or **custom** values typed as `name=value; …` in real units (names or letters, e.g. `Time=13; EhOH=50`; factors not listed stay at the centre) | optimum |
+| Optimum | which optimum the plots use: **maximum** or minimum | maximum |
+| Trace from | optimum trace anchored at the **optimum**, or at the centre (classic perturbation plot) | optimum |
+| Residuals | residuals-by-factor plot: **raw** residuals, or externally studentized (with dotted lines at ±2) | raw |
+| Greyscale (journal style) | grey shades and black lines with line styles instead of colours, for all plots and the response maps | off |
 
 #### Model
 
 In coded units: y = b0 + Σ bᵢxᵢ + Σ bᵢᵢxᵢ² + Σ bᵢⱼxᵢxⱼ, fitted by least squares. Blocks are included with sum-to-zero coding, so the constant and every prediction refer to an **average block**.
 
-A two-level design with centre points has only three levels where all factors are at −1, 0 or +1 together. It cannot separate the square terms, and the full quadratic model is refused with a message. Use *linear + two-factor interactions* there, or add axial points.
+A two-level design with centre points has only three levels where all factors are at −1, 0 or +1 together. It cannot separate the square terms, and the full quadratic model is refused with a message. Use *linear + two-factor interactions* or the *reduced cubic* there, or add axial points.
+
+**Reduced cubic.** The full cubic adds the third-order terms ABC, A²B and A³ (written `ABC`, `A^2B`, `A^3`) to the full quadratic. Most designs cannot estimate all of them. In a CCD, for example, A³ can't be told apart from A and AB², and in a Box-Behnken ABC is zero in every run. Fitting such a model would overfit, or not fit at all. The reduced cubic works for any design:
+
+1. **Build the full cubic:** the constant, block terms, linear terms, squares, two-factor interactions, then the cubic terms.
+2. **Check the rank:** a QR decomposition (Gram-Schmidt, done twice for accuracy) of the model-matrix columns, **in this hierarchical order**. A column that is a linear combination of the columns before it (remaining norm below 10⁻⁸ of its own) is **aliased**. LibreStats uses this fixed order rather than column pivoting, which picks columns by size and could drop a linear or square term in favour of a cubic one. Within the cubic terms the order is ABC-type, then A²B-type, then A³-type, because pure cubes need four or more levels of one factor and are the ones most often aliased.
+3. **Drop the aliased terms:** each one is left out of the model.
+4. **Report each alias in plain text**, from the exact linear combination found in step 2, for example *AC^2 is aliased with AB^2*, or *A^3 is aliased with A and AB^2: A^3 = 2 A − AB^2* (coded units).
+
+**Aliased terms are marked** wherever they appear (coefficient table, *Terms in the model*, model-reduction tables). A kept term that stands in for a removed term of the same order is shown as, for example, *AB^2 (aliased with AC^2)*: its coefficient estimates the sum of both. When the removed term is a combination of several kept terms, they are marked *part of the A^3 alias*. Lower-order terms in such a combination (A in A³ = 2A − AB²) are not marked. The report states how many terms the design supports and how many the final model has, e.g. *The design supports 17 of the 20 full-cubic terms (3 aliased term(s) removed); the final model has 9.* With *Exclude aliased terms from selection* ticked, the marked terms are left out of the starting model, so model reduction cannot choose a term whose meaning is ambiguous.
+
+Which member of an aliased set is kept only changes the labels: the fitted values, residuals, R², ANOVA and diagnostics are the same as for any other choice. A removed term can't be told apart from the terms it is aliased with, so its effect is carried by their coefficients. Read these coefficients with care. The **VIF** column shows which of the kept terms are strongly correlated.
+
+| Design (3 factors) | Full cubic | Estimable (reduced cubic) | Removed, for example |
+|---|---|---|---|
+| CCD (rotatable or face-centred) | 20 | 14 | AC² = AB², B²C = A²C, BC² = A²B; A³ = α²A + (1 − α²)AB² |
+| Box-Behnken | 20 | 13 | ABC (zero in every run); A³ = A; AC² = A − AB² |
+| CCCD | 20 | 17 | AC² = AB², B²C = A²C, BC² = A²B |
+| 2³ factorial + centre points | 20 | 9 | B² = C² = A²; A²B = B; A³ = A |
+
+For a reduced cubic there is no stationary point or canonical analysis, which apply to a quadratic only. The maximum and minimum within the experimental region are found **numerically**: a grid of about 20 000 points, then the 5 best points are improved one factor at a time. Along one factor the model is at most cubic, so each step is solved exactly. The equation in actual units, the response map and the 3D surface work as for the other models.
+
+#### Model reduction
+
+A full quadratic (or reduced cubic) often contains terms that only add noise. Model reduction removes them and then runs **all** the usual output on the **final model**: coefficients, ANOVA, lack of fit, equations, diagnostics, outlier test, influence plot, optimum, response maps. The *Terms in the model* row at the top lists the final terms.
+
+**Hierarchy.** Each term is a product of factors, e.g. A²B = A·A·B. Its **parents** are the lower-order terms that divide it: A²B → A, B, A², AB. A model is **hierarchical** when every term's parents are in it too. With *Keep model hierarchy* on (the default), a term can only be removed when no other term in the model has it as a parent, so A stays while AB or A² is in the model. Only parents that are in the starting model count: in a reduced cubic, some parents may have been removed as aliases. With hierarchy off, any term can be removed, and the report warns which terms lost their parents. A non-hierarchical model depends on how the factors are coded: its predictions change if the centre or the range of a factor is shifted.
+
+**Locked terms** are never removed. With hierarchy on, their parents are kept too. The constant and block terms are always kept.
+
+| Method | How it works |
+|---|---|
+| Manual | the selected terms are removed. With hierarchy on, removing a parent of a remaining term is refused, with a message naming the terms that need it |
+| Backward elimination (p-value) | start from the chosen model (after alias removal). Among the removable, unlocked terms, take the one with the highest p; if p > α-out, remove it and refit, then repeat. Exactly **one term per step**, because all p-values change after each refit. The steps table lists each removed term with its p at removal |
+| All subsets (AICc) | every subset of the candidate terms (hierarchical when hierarchy is on, always with the locked terms) is fitted and ranked by **AICc = n ln(SSE/n) + 2p + 2p(p+1)/(n − p − 1)**, with p the number of model terms including the constant and block terms, lowest first. Ties are broken by fewer terms, then higher predicted R². Models with n − p − 1 ≤ 0 are skipped. The top N are listed with **ΔAICc** (AICc − the lowest AICc; models with ΔAICc < 2 are about equally supported by the data, Burnham & Anderson, 2002), R², adjusted R², predicted R² (n/a if a leverage is ≥ 0.9999) and lack-of-fit p. The analysis continues with rank 1, or the rank given in the dialog. Limits: at most 20 candidate terms and 200 000 models (about 10 s); otherwise use backward elimination or lock terms |
+
+AICc here counts the model terms only, as in the formula above. Burnham & Anderson (2002) also count the error variance as a parameter (K = p + 1), which can change the ranking slightly in very small designs. The formula is the small-sample AIC of Hurvich & Tsai (1989). AICc only needs each model's SSE, which LibreStats computes from the cross-product matrix of the starting model, so large searches stay fast: 38 619 hierarchical models of a 5-factor quadratic take about 3 s.
+
+The report section **Model reduction** (before the coefficients and the ANOVA) shows the settings, the steps or the top-N table, a **comparison of the starting and the final model** (R², adjusted R², predicted R², lack-of-fit p, AICc, S, number of terms), and a one-line summary, e.g. *Reduced from full quadratic by backward elimination (alpha = 0.05; hierarchy kept). Removed: B^2, AB, AC, A^2.* It also notes that **the p-values of a selected model are optimistic**: judge the model by predicted R² and confirmation runs. LibreStats keeps no hidden record of the settings. The report lists the method, α, hierarchy, locked terms and the final terms, and its last line says how to reproduce the final model exactly: *Manual*, removing the listed terms.
+
+**Example** (`example_data_rsm.ods`, *Design 2*: CCCD, full quadratic, R² = 0.678, predicted R² = 0.165): backward elimination removes B², AB, AC and A² (in that order), leaving A, B, C, C², BC with predicted R² = 0.488 and AICc 116.1 instead of 132.1. All subsets (95 hierarchical models) ranks the same model first.
+
+**Checked against:** an independent implementation of both procedures with statsmodels and numpy (steps, p-values at removal, final terms, every AICc of the top models, R², adjusted R², predicted R², lack-of-fit p), with and without hierarchy, with locked terms, blocks and the reduced cubic.
 
 #### Report
 
 | Part | Content |
 |---|---|
-| Fit | S (residual standard deviation), R², adjusted R², **predicted R²** (from PRESS: how well the model predicts runs left out one at a time) |
-| Coefficients (coded units) | coefficient, SE, t, p and "significant" for every term. Coded coefficients can be compared with each other: a larger \|b\| means a larger effect over the design range |
+| Fit | S (residual standard deviation), R², adjusted R², **predicted R²** (from PRESS: how well the model predicts runs left out one at a time), and the **R² ceiling** = 1 − SS(pure error) / SS(total): the largest R² any model could reach, because no model can explain the scatter between repeated runs (Draper & Smith, 1998). Shown only when there are repeated runs (pure error, within blocks). Compare R² with the ceiling, not with 1: R² close to the ceiling means the model explains nearly all the variation it can; a clear gap is variation left for lack of fit |
+| Coefficients (coded units) | coefficient, SE, t, p and "significant" for every term. Coded coefficients can be compared with each other: a larger \|b\| means a larger effect over the design range. **VIF** (variance inflation factor) = the factor by which the term's variance grows because it is correlated with the other terms; 1 = uncorrelated. Terms with VIF above 10 are listed below the table: their coefficients are imprecise and change when terms are added or removed |
+| Reduced cubic: aliased terms removed | (reduced cubic only) how many terms the full cubic has, how many the design can estimate, and each removed term with what it is aliased with |
 | Analysis of variance | Model, Linear, Square, 2-way interaction and Blocks with adjusted sums of squares (the increase in residual SS when the group is removed), F and p; residual split into **lack of fit** and **pure error** (repeated points, mostly centre points) with an F test. Significant lack of fit means the quadratic model does not describe the response well enough |
 | Equation in actual units | the same model with the factors in their own units (for an average block) |
 | Factor levels | each factor's centre and half-range, and the coded range of the design |
 | Stationary point and canonical analysis | the point where the slope is zero, x_s = −B⁻¹b / 2, in coded and actual units, with its predicted response; the **eigenvalues** of B: all negative = **maximum**, all positive = **minimum**, mixed signs = **saddle point**. An eigenvalue near 0 means a **ridge**: settings along its direction give nearly the same response. The report says whether the point lies inside the experimental region |
 | Maximum / minimum within the experimental region | the exact best and worst predicted response within the box of the coded settings that were run, with the settings. For a maximum inside the region this is the stationary point; for a saddle point or a stationary point outside the region it is on the boundary |
 
-The **experimental region** is the box from the lowest to the highest coded setting of each factor (for a CCD, ±α). For a rotatable CCD the corners of this box lie beyond the axial points, so predictions there are extrapolations. Prefer optima that lie within the region actually explored, and confirm any optimum with new runs.
+The **experimental region** is the box from the lowest to the highest coded setting of each factor (for a CCD, ±α). The report checks which corners of this box were actually run. In a CCCD, a face-centred CCD or a factorial all corners were run, so predictions inside the box interpolate between measured settings. In a rotatable CCD the axial points reach beyond the cube, and a Box-Behnken design has no corner runs at all, so predictions near the unmeasured corners are extrapolations. LibreStats adds a warning when the reported maximum or minimum lies at a corner that was not run. It also warns when a predicted maximum, minimum or stationary value lies **outside the range of the measured responses** (e.g. a predicted minimum of 3.5 when the lowest measurement is 8.3): the model extrapolates beyond the data there. Prefer optima within the region actually explored, and confirm any optimum with new runs.
+
+The words *average block* (equation title) and *including … block terms* appear only when the design has blocks.
+
+#### Diagnostics per run: outliers, leverage and influence
+
+A table lists every run with a response, by **standard order** (the *Std order* column of the Design sheet), so you can find it on the Design sheet. n is the number of runs analysed, p the number of model terms (blocks included).
+
+| Column | Meaning |
+|---|---|
+| Observed, Fitted, Residual | y, the model's prediction ŷ, and e = y − ŷ |
+| Stud. resid. r | the internally studentized residual r = e / (S √(1 − h)): the residual in units of its own standard error |
+| Leverage h | h = x′(X′X)⁻¹x: how strongly the run's own response pulls the fit towards it (0 to 1). It depends only on the design: axial and corner points have more leverage than centre points |
+| Ext. stud. t* | the **externally studentized residual** t* = r √((n − p − 1) / (n − p − r²)): the residual scaled by S from the fit *without* this run, so an outlier cannot hide by inflating S. If the run is not an outlier, t* follows a t distribution with n − p − 1 df |
+| p (outlier) | 2 P(T > \|t*\|), T ~ t(n − p − 1): the test of this one run |
+| p Bonferroni | min(1, n × p): the same test corrected for checking all n runs (Cook & Weisberg, 1982; Weisberg, 2014) |
+| Cook's D | D = r² h / (p (1 − h)) = (b₍ᵢ₎ − b)′X′X(b₍ᵢ₎ − b) / (p S²): how far the coefficients b move when the run is left out (b₍ᵢ₎) (Cook, 1977) |
+| F level | the F(p, n − p) cumulative probability at D. Cook's reading: leaving the run out moves the coefficients to the edge of this confidence region. Cook suggests that, for an uncomplicated analysis, every run should stay well within about 10% |
+| Flags | see below |
+
+**Flags:**
+
+| Flag | Rule | Meaning |
+|---|---|---|
+| outlier | Bonferroni p < 0.05 | the response is further from the model than chance explains, even after testing every run |
+| check | p < 0.05 but Bonferroni p ≥ 0.05 | worth checking the record, but among n runs about 0.05 n such p values are expected by chance |
+| high leverage | h > 2p/n (Hoaglin & Welsch, 1978) | unusual settings: the fit depends strongly on this run. Not used when p/n > 0.5 (2p/n would then exceed 1); the report then shows a warning instead |
+| influential | F level ≥ 50%, i.e. D at or above the median of F(p, n − p) (Bollen & Jackman, 1990); for large n close to D > 1 (Cook & Weisberg, 1982) | leaving the run out changes the coefficients substantially |
+
+Below the table, **one line per flagged run** says what was found and what to do, for example:
+
+*Run 3: outlier (t\* = 4.19, Bonferroni p = 0.017); not influential (D = 0.18, F level 0.4%). Action: check the record and how the run was done; if it was an error, correct or exclude it and refit, otherwise keep it and report it.*
+
+An outlier that is not influential has an unusual response, but the conclusions barely depend on it. An influential run that is not an outlier usually sits at an unusual setting (high leverage). Never delete a run just because it is flagged: look for a recording or execution error, and compare the fit with and without it.
+
+**Not available (n/a):** t\* and its p values need n − p − 1 > 0, i.e. at least 2 residual degrees of freedom. When r² = n − p, the other runs fit exactly without this run, so its t\* would be infinite and is shown as n/a. All diagnostics are n/a for a run with leverage 1 (the model cannot be fitted without it), and when the fit is perfect (S = 0).
+
+**Influence plot** (native Calc chart, right of the table, when *charts* are on): leverage h across (0 to 1), t\* up, **marker area proportional to Cook's D**. The title names the model, e.g. *Influence plot: reduced cubic, reduced*. Dashed reference lines, explained in the legend below the plot:
+
+| Line | Meaning |
+|---|---|
+| t\* = ±2 (grey) | "worth a look": a residual about two standard errors from the model |
+| t\* = ± Bonferroni critical t (red) | t(1 − 0.05/(2n), n − p − 1): beyond it a run is an *outlier* (Bonferroni p < 0.05) |
+| h = 2p/n (orange, vertical) | right of it a run has *high leverage*; not drawn when p/n > 0.5 |
+
+Runs at the top or bottom have unusual responses, runs to the right have unusual settings, and large markers are influential. The line end points are listed in a small table (*Influence plot reference lines*) left of the plot. Labels show the flagged runs and the 3 runs with the largest D and the largest \|t\*\|. Design points often share the same leverage, so labels on every point would pile up; the table has all runs. Screening analyses (section 9.3) show the same table and plot.
+
+**Checked against:** statsmodels (internally and externally studentized residuals, leverage, Cook's D), scipy (t and F probabilities), refitting without each run, and Cook's (1977) Tables 1 and 2. For the CCCD in `example_data_rsm.ods` (*Design 2*, full quadratic), run 3 gives t\* = 4.19, p = 0.0006, Bonferroni p = 0.017, h = 0.163, D = 0.178: an outlier, not influential. Run 9 is flagged *check* (p = 0.025, Bonferroni p = 0.70).
+
+Two differences from the printed Cook (1977) paper come from the paper itself. Hald observation 8 is printed as D = 0.31, but the same row's \|t\| = 1.69 and V(ŷ)/V(e) = 0.69 give 1.69² × 0.69 / 5 = 0.39 by Cook's own formula, which is also what refitting gives. In the badly conditioned Longley data a few printed values differ by about 0.01.
+
+#### Plots
+
+All plots are drawn for the **final** model (after any model reduction) and are titled with the response and a subtitle naming the model and its terms. The response maps, 3D surfaces and the influence plot are described below and in *Diagnostics per run*. Three more plots are drawn as pictures (SVG, like the 3D surface: Calc's charts cannot draw stacked axes or per-segment category axes), in a row under the maps:
+
+| Plot | What it shows | How to read it |
+|---|---|---|
+| **Observed vs predicted** | one point per run: predicted (fitted) across, observed up, the same scale on both axes (a square plot) with the dashed line observed = predicted; R² and predicted R² | points close to the line = a good fit. Outliers and influential runs are drawn as open circles labelled with their standard order |
+| **Residuals by factor** | one shared residual axis; the horizontal axis is split into one segment per factor (e.g. *Time (min) \| Temp (°C) \| EtOH (%)*), with one column of points per design level (5 for a CCD/CCCD, 3 for a Box-Behnken) from low to high, ticks labelled with the real settings, a small deterministic sideways jitter so equal values stay visible, and a short bar at each column's mean | a curve in the column means across one factor = that factor needs another term (e.g. a square). Spread that grows or shrinks across the levels = unequal variance (consider a transformation). Optionally externally studentized residuals, with lines at ±2 |
+| **Optimum trace** | for each factor: the predicted response as that factor moves over its whole range (coded −α … +α) with all other factors at the optimum. One shared horizontal position, with a real-unit axis per factor stacked under the plot (each with ticks at its own values, e.g. Time 1–25, Temp 50–200, EtOH 0–100). A line style per factor (solid, dashed, dotted, …) and a legend. Open circles mark the optimum on each trace | all traces meet at the optimum response. A steep trace = the response is sensitive to that factor near the optimum; a flat one = the factor matters little there. If the optimum is on a boundary, its circle sits at the end of the line. With *Trace from: centre* this is the classic perturbation plot (Myers et al., 2016) |
+
+The **3D surfaces and response maps** hold the factors not shown at the chosen values (by default the optimum), and say so under each picture, e.g. *EhOH (%) fixed at the predicted maximum = 100*.
 
 #### Response map and 3D surface
 
-- **Response map:** a 21 × 21 grid of predicted values over the two chosen factors, in actual units: the horizontal factor across, the vertical factor down, high values at the top. Each cell is coloured by its value (viridis: dark blue = lowest, yellow = highest on the map). It is ordinary cells, so you can read and copy the numbers. Calc has no contour chart; the coloured grid shows the same information.
+**Which factor pairs.** With 2 factors there is one map, and with 3 factors there are three (A × B, A × C, B × C). With 4 or more factors there would be 6 or more, so LibreStats draws the **3 pairs whose predicted response varies most** over their map (the range of the 21 × 21 grid), and the report names the pairs that were left out. The maps stand side by side from column K, each with its 3D surface underneath. Through automation (`XFactor`, `YFactor`) a single chosen pair can still be drawn.
+
+- **Response map:** a 21 × 21 grid of predicted values over two factors, in actual units: the horizontal factor across, the vertical factor down, high values at the top. Each cell is coloured by its value (viridis: dark blue = lowest, yellow = highest on the map). It is ordinary cells, so you can read and copy the numbers. Calc has no contour chart; the coloured grid shows the same information.
 - **3D surface:** the same grid drawn as a surface (section 6.3), inserted as a picture.
 
-Factors not on the map are held at their centre (coded 0); the map title says at which values.
+Factors not on the map are held at the values chosen under *Other factors fixed at* (by default the predicted optimum); the map title and the footnote under the surface say which values.
 
 #### Checked against
 
@@ -1110,7 +1241,7 @@ Every analysis can be run without a dialog through the UNO service `org.libresta
 | `posthocDunn` | `GroupRange`, `Adjust` = `holm`/`bonferroni`/`sidak`/`bh` (holm), `Alpha` |
 | `doeDesign` | Range: the factor table. `Design` = `full`/`fractional`/`pb`/`ccd`/`bbd` (full), `Runs` (empty = automatic), `CentrePoints` (screening: 0; response surface: empty = automatic), `Replicates` (1), `Blocks` (1), `Randomize` (True), `Seed` (empty = random), `Responses` (comma-separated, "Response"). CCD: `Alpha` = `rotatable`/`orthogonal`/`face`/a number (rotatable), `FractionalCube` (True), `Inscribed` (False), `AxialCentrePoints` (empty = automatic) |
 | `doeAnalyseScreening` | Range: the design table (header row included). `Response` (empty = first response column), `Model` = `2fi`/`main` (2fi), `Alpha` (0.05), `Charts` (True) |
-| `doeAnalyseRSM` | Range: the design table (header row included). `Response` (empty = first response column), `Model` = `quadratic`/`interaction`/`linear` (quadratic), `Alpha` (0.05), `XFactor`, `YFactor` (factor names or letters for the response map; empty = first two), `Charts` (True) |
+| `doeAnalyseRSM` | Range: the design table (header row included). `Response` (empty = first response column), `Model` = `quadratic`/`interaction`/`linear`/`cubic` (reduced cubic) (default: quadratic), `Alpha` (0.05), `XFactor`, `YFactor` (factor names or letters: one response map of these two; empty = every factor pair, at most 3 with the largest predicted range), `Charts` (True), `Goal` = `max`/`min`, `Fixed` = `optimum`/`centre`/`custom`, `FixedValues` (e.g. `Time=13; C=50`), `Residuals` = `raw`/`studentized`, `Anchor` = `optimum`/`centre`, `Greyscale` (False), `Reduction` = `none`/`manual`/`backward`/`subsets` (none), `ReductionAlpha` (0.05), `Hierarchy` (True), `Locked`, `Remove` (comma-separated term names such as `B^2, AB`), `Top` (5), `Rank` (1) |
 
 The tools in sections 4 and 5 also accept `Beside` (True = write next to the input range).
 
@@ -1154,7 +1285,7 @@ def flag_outliers(*args):
 - **MAR vs MNAR** cannot be distinguished by Little's test or any other test on the observed data.
 - **Performance:** pure Python is slower than compiled libraries. Data-preparation tools handle typical datasets (thousands of rows) easily; MICE with many variables, imputations and iterations takes longer.
 - **DOE / RSM is new and still being tested.** The designs and analyses are checked against published examples (NIST, Montgomery, Box & Hunter, Box & Behnken) and statsmodels, but the module has had little use on real experiments so far. Check the design summary before running an experiment, and report anything unexpected.
-- **DOE / RSM scope:** two-level screening designs and central composite / Box-Behnken designs only (no definitive screening, Doehlert, mixture or optimal designs yet). Factors with text levels are possible in screening designs only. Each response is analysed on its own: there is no simultaneous optimisation of several responses (desirability) yet. The response map and 3D surface show two factors at a time, with the others at their centre.
+- **DOE / RSM scope:** two-level screening designs and central composite / Box-Behnken / CCCD designs only (no definitive screening, Doehlert, mixture or optimal designs yet). Factors with text levels are possible in screening designs only. Each response is analysed on its own: there is no simultaneous optimisation of several responses (desirability) yet. Response maps and 3D surfaces show two factors at a time, with the others fixed (at the optimum, the centre or chosen values), and at most 3 factor pairs are drawn (with 4 or more factors, the 3 with the largest predicted range).
 - **Platforms:** developed and tested on Linux with LibreOffice 26.8; not yet tested on Windows or macOS.
 
 ---
@@ -1165,6 +1296,7 @@ def flag_outliers(*args):
 - Bakeman, R. (2005). Recommended effect size statistics for repeated measures designs. *Behavior Research Methods*, 37(3), 379–384.
 - Benjamini, Y., & Hochberg, Y. (1995). Controlling the false discovery rate: A practical and powerful approach to multiple testing. *Journal of the Royal Statistical Society B*, 57(1), 289–300.
 - Blom, G. (1958). *Statistical Estimates and Transformed Beta-Variables*. Wiley.
+- Bollen, K. A., & Jackman, R. W. (1990). Regression diagnostics: An expository treatment of outliers and influential cases. In J. Fox & J. S. Long (Eds.), *Modern Methods of Data Analysis*. Sage.
 - Bowyer, A. (1981). Computing Dirichlet tessellations. *The Computer Journal*, 24(2), 162–166.
 - Box, G. E. P., & Behnken, D. W. (1960). Some new three level designs for the study of quantitative variables. *Technometrics*, 2(4), 455–475.
 - Box, G. E. P., & Cox, D. R. (1964). An analysis of transformations. *Journal of the Royal Statistical Society B*, 26(2), 211–252.
@@ -1172,12 +1304,16 @@ def flag_outliers(*args):
 - Box, G. E. P., & Hunter, J. S. (1961). The 2^(k−p) fractional factorial designs. *Technometrics*, 3(3), 311–351 and 3(4), 449–458.
 - Box, G. E. P., & Wilson, K. B. (1951). On the experimental attainment of optimum conditions. *Journal of the Royal Statistical Society B*, 13(1), 1–45.
 - Brown, M. B., & Forsythe, A. B. (1974). Robust tests for the equality of variances. *Journal of the American Statistical Association*, 69(346), 364–367.
+- Burnham, K. P., & Anderson, D. R. (2002). *Model Selection and Multimodel Inference* (2nd ed.). Springer.
 - Cohen, J. (1988). *Statistical Power Analysis for the Behavioral Sciences* (2nd ed.). Erlbaum.
+- Cook, R. D. (1977). Detection of influential observation in linear regression. *Technometrics*, 19(1), 15–18. https://doi.org/10.1080/00401706.1977.10489493
+- Cook, R. D., & Weisberg, S. (1982). *Residuals and Influence in Regression*. Chapman & Hall.
 - Daniel, C. (1959). Use of half-normal plots in interpreting factorial two-level experiments. *Technometrics*, 1(4), 311–341.
 - Delacre, M., Lakens, D., & Leys, C. (2017). Why psychologists should by default use Welch's t-test instead of Student's t-test. *International Review of Social Psychology*, 30(1), 92–101.
 - Delacre, M., Leys, C., Mora, Y. L., & Lakens, D. (2019). Taking parametric assumptions seriously: Arguments for the use of Welch's F-test instead of the classical F-test in one-way ANOVA. *International Review of Social Psychology*, 32(1), 13.
 - Dempster, A. P., Laird, N. M., & Rubin, D. B. (1977). Maximum likelihood from incomplete data via the EM algorithm. *Journal of the Royal Statistical Society B*, 39(1), 1–38.
 - Dixon, W. J. (1951). Ratios involving extreme values. *Annals of Mathematical Statistics*, 22(1), 68–78.
+- Draper, N. R., & Smith, H. (1998). *Applied Regression Analysis* (3rd ed.). Wiley.
 - Dunn, O. J. (1964). Multiple comparisons using rank sums. *Technometrics*, 6(3), 241–252.
 - Dunnett, C. W. (1955). A multiple comparison procedure for comparing several treatments with a control. *Journal of the American Statistical Association*, 50(272), 1096–1121.
 - Dunnett, C. W. (1964). New tables for multiple comparisons with a control. *Biometrics*, 20(3), 482–491.
@@ -1190,12 +1326,15 @@ def flag_outliers(*args):
 - Greenhouse, S. W., & Geisser, S. (1959). On methods in the analysis of profile data. *Psychometrika*, 24(2), 95–112.
 - Grubbs, F. E. (1969). Procedures for detecting outlying observations in samples. *Technometrics*, 11(1), 1–21.
 - Hoaglin, D. C., & Iglewicz, B. (1987). Fine-tuning some resistant rules for outlier labeling. *Journal of the American Statistical Association*, 82(400), 1147–1149.
+- Hoaglin, D. C., & Welsch, R. E. (1978). The hat matrix in regression and ANOVA. *The American Statistician*, 32(1), 17–22.
 - Holm, S. (1979). A simple sequentially rejective multiple test procedure. *Scandinavian Journal of Statistics*, 6(2), 65–70.
+- Hurvich, C. M., & Tsai, C.-L. (1989). Regression and time series model selection in small samples. *Biometrika*, 76(2), 297–307.
 - Huynh, H., & Feldt, L. S. (1976). Estimation of the Box correction for degrees of freedom from sample data in randomized block and split-plot designs. *Journal of Educational Statistics*, 1(1), 69–82.
 - Kramer, C. Y. (1956). Extension of multiple range tests to group means with unequal numbers of replications. *Biometrics*, 12(3), 307–310.
 - Kruskal, W. H., & Wallis, W. A. (1952). Use of ranks in one-criterion variance analysis. *Journal of the American Statistical Association*, 47(260), 583–621.
 - Lakens, D. (2013). Calculating and reporting effect sizes to facilitate cumulative science: A practical primer for t-tests and ANOVAs. *Frontiers in Psychology*, 4, 863.
 - Lecoutre, B. (1991). A correction for the ε̃ approximate test in repeated measures designs with two or more independent groups. *Journal of Educational Statistics*, 16(4), 371–372.
+- Leichtweis, M. G., Pereira, C., Prieto, M. A., Barreiro, M. F., Baraldi, I. J., Barros, L., & Ferreira, I. C. F. R. (2019). Ultrasound as a rapid and low-cost extraction procedure to obtain anthocyanin-based colorants from *Prunus spinosa* L. fruit epicarp: Comparative study with conventional heat-based extraction. *Molecules*, 24(3), 573. https://doi.org/10.3390/molecules24030573
 - Lenth, R. V. (1989). Quick and easy analysis of unreplicated factorials. *Technometrics*, 31(4), 469–473.
 - Levene, H. (1960). Robust tests for equality of variances. In I. Olkin (Ed.), *Contributions to Probability and Statistics* (pp. 278–292). Stanford University Press.
 - Leys, C., Klein, O., Dominicy, Y., & Ley, C. (2018). Detecting multivariate outliers: Use a robust variant of the Mahalanobis distance. *Journal of Experimental Social Psychology*, 74, 150–156.
@@ -1215,6 +1354,7 @@ def flag_outliers(*args):
 - Rubin, D. B. (1987). *Multiple Imputation for Nonresponse in Surveys*. Wiley.
 - Satterthwaite, F. E. (1946). An approximate distribution of estimates of variance components. *Biometrics Bulletin*, 2(6), 110–114.
 - Shapiro, S. S., & Wilk, M. B. (1965). An analysis of variance test for normality (complete samples). *Biometrika*, 52(3–4), 591–611.
+- Weisberg, S. (2014). *Applied Linear Regression* (4th ed.). Wiley.
 - Šidák, Z. (1967). Rectangular confidence regions for the means of multivariate normal distributions. *Journal of the American Statistical Association*, 62(318), 626–633.
 - Smithson, M., & Verkuilen, J. (2006). A better lemon squeezer? Maximum-likelihood regression with beta-distributed dependent variables. *Psychological Methods*, 11(1), 54–71.
 - Student. (1908). The probable error of a mean. *Biometrika*, 6(1), 1–25.

@@ -41,6 +41,11 @@ class Builder:
         self._add("ListBox", name, x, y, w, 12, Dropdown=True,
                   StringItemList=tuple(label for _, label in items))
 
+    def listbox(self, name, x, y, w, h, items=()):
+        """A list (not a dropdown) in which several items can be selected."""
+        self._add("ListBox", name, x, y, w, h, Dropdown=False, MultiSelection=True,
+                  StringItemList=tuple(items))
+
     def range_and_labels(self, range_text, has_labels):
         """Input range field and 'first row contains names' box at the top."""
         self.label("lblRange", 10, 8, 55, "Input range:")
@@ -133,6 +138,7 @@ def run(ctx, doc, parent, dialog, title, read, validate=None):
                     problem = str(exc)
             if problem is None:
                 return result
-            calc.message_box(ctx, parent, title, problem)
+            if problem:                 # "" : show the dialog again without a message
+                calc.message_box(ctx, parent, title, problem)
     finally:
         dialog.dispose()

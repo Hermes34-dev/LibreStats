@@ -1,5 +1,6 @@
 """Data visualisation: tables of plotted values and the Calc charts built from them."""
 
+import re
 from dataclasses import dataclass
 
 import uno
@@ -277,7 +278,9 @@ def insert_svg(doc, sheet, name, svg, pos, width):
     shape = doc.createInstance("com.sun.star.drawing.GraphicObjectShape")
     sheet.getDrawPage().add(shape)
     shape.Graphic = graphic
-    shape.setSize(Size(width, round(width * sf.HEIGHT / sf.WIDTH)))
+    size = re.search(r'<svg[^>]*\swidth="([\d.]+)"[^>]*\sheight="([\d.]+)"', svg)
+    aspect = float(size.group(2)) / float(size.group(1)) if size else sf.HEIGHT / sf.WIDTH
+    shape.setSize(Size(width, round(width * aspect)))
     shape.setPosition(pos)
     shape.Name = name
     shape.Title = name

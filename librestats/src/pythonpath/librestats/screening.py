@@ -31,13 +31,15 @@ from dataclasses import dataclass, field
 from itertools import combinations
 
 from .distributions import f_sf, norm_ppf, t_isf, t_sf
+from .influence import diagnostics
 from .doe import LETTERS
 from .linalg import SingularMatrixError, inverse_spd, matvec
 
 MODELS = ("2fi", "main")
-RSM_POINT_TYPES = (-1, 2)  # axial points (central composite), edge midpoints (Box-Behnken)
-RSM_DESIGN = ("This is a response surface design (central composite or Box-Behnken: it has "
-              "axial or edge points). Analyse Screening Design works only on two-level "
+RSM_POINT_TYPES = (-1, 2, 3)  # axial points (central composite), edge midpoints
+                              # (Box-Behnken), outer factorial points (CCCD)
+RSM_DESIGN = ("This is a response surface design (central composite, Box-Behnken or CCCD: "
+              "it has axial or edge points). Analyse Screening Design works only on two-level "
               "screening designs (full or fractional factorial, Plackett-Burman). Use DOE / "
               "RSM > Analyse Response Surface Design instead.")
 SHOW_ORDER = 3           # alias members up to this order are named
@@ -109,6 +111,8 @@ class Analysis:
     curvature: Curvature = None
     block_effects: list = field(default_factory=list)    # chains confounded with blocks
     notes: list = field(default_factory=list)
+    observations: list = field(default_factory=list)     # run indices that were fitted
+    diagnostics: list = None             # influence.Diagnostic per fitted run; None if df = 0
 
     def critical_t(self, alpha):
         if self.error == "residual":
@@ -309,4 +313,5 @@ def analyse(coded, ptype, blocks, y, model="2fi", alpha=0.05):
                          "replicated runs) for pure error.")
 
     return Analysis(n, missing, terms, beta[0], df, mse, r2, r2_adj, error, pure_df,
-                    pure_ss, contrasts, lenth_result, curvature, confounded, notes)
+                    pure_ss, contrasts, lenth_result, curvature, confounded, notes, obs,
+                    diagnostics(rows, yy, beta, inv, sse) if df > 0 else None)

@@ -5,6 +5,9 @@ venv/
 
 # Build output (librestats.oxt, test logs)
 librestats/build/
+/cooks_distance_paper.pdf
+/example_data_rsm.ods
+/prieto_cccd.pdf
 
 # Python caches
 __pycache__/
