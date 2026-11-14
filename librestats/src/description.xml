@@ -8,7 +8,20 @@
   <display-name>
     <name lang="en">LibreStats</name>
   </display-name>
+  <publisher>
+    <name xlink:href="https://github.com/Hermes34-dev/LibreStats" lang="en">Hermes34-dev</name>
+  </publisher>
+  <extension-description>
+    <src xlink:href="description/description_en.txt" lang="en"/>
+  </extension-description>
+  <icon>
+    <default xlink:href="icons/librestats.png"/>
+  </icon>
   <dependencies>
-    <lo:LibreOffice-minimal-version d:name="LibreOffice 26.8" value="26.8"/>
+    <lo:LibreOffice-minimal-version d:name="LibreOffice 24.2" value="24.2"/>
   </dependencies>
+  <!-- Permanent address: every installed copy asks here for updates. Never move it. -->
+  <update-information>
+    <src xlink:href="https://hermes34-dev.github.io/LibreStats/update.xml"/>
+  </update-information>
 </description>

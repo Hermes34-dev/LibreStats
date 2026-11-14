@@ -157,7 +157,7 @@ def _write(doc, inp, outcomes, report, opts, sheet_name, undo_title):
             rows = ([headers] if inp.has_labels else []) + values
             target = sheet.getCellRangeByPosition(inp.last_col + 1, top,
                                                   inp.last_col + len(headers), top + len(rows) - 1)
-            if target.queryContentCells(1 | 2 | 4 | 16).getCount():
+            if not calc.is_empty(target):
                 raise calc.RangeError(f"The {len(headers)} column(s) to the right of the input "
                                       "range are not empty. Clear them or choose 'New sheet'.")
             target.setDataArray(tuple(tuple(calc._cell_value(v) for v in r) for r in rows))

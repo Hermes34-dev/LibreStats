@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="Menu" script:language="StarBasic">REM Every LibreStats menu item calls Run with its command name.
+REM LibreStats itself is Python; this Basic layer only exists so that a missing Python
+REM runtime gives a clear message instead of a menu that silently does nothing.
+
+Sub Run(command As String)
+    Dim handler As Object
+    On Error Resume Next
+    handler = CreateUnoService(&quot;org.librestats.Handler&quot;)
+    On Error GoTo 0
+    If Not IsNull(handler) Then
+        handler.trigger(command)
+        Exit Sub
+    End If
+
+    Dim loader As Object
+    On Error Resume Next
+    loader = CreateUnoService(&quot;com.sun.star.loader.Python&quot;)
+    On Error GoTo 0
+    If IsNull(loader) Then
+        MsgBox &quot;LibreStats needs LibreOffice&apos;s Python support, which is not installed.&quot; _
+            &amp; Chr(10) &amp; Chr(10) &amp; &quot;Install this package, then restart LibreOffice:&quot; _
+            &amp; Chr(10) &amp; &quot;   Debian, Ubuntu, Mint:  libreoffice-script-provider-python&quot; _
+            &amp; Chr(10) &amp; &quot;   Fedora, RHEL, openSUSE:  libreoffice-pyuno&quot; _
+            &amp; Chr(10) &amp; Chr(10) &amp; &quot;On Windows and macOS, and in the Flatpak, Snap and AppImage &quot; _
+            &amp; &quot;versions, Python is included: reinstalling LibreOffice should fix it.&quot;, _
+            16, &quot;LibreStats&quot;
+    Else
+        MsgBox &quot;LibreStats could not be loaded, although LibreOffice&apos;s Python support is &quot; _
+            &amp; &quot;installed.&quot; &amp; Chr(10) &amp; Chr(10) &amp; &quot;Try restarting LibreOffice. If that does &quot; _
+            &amp; &quot;not help, reinstall LibreStats (Tools - Extension Manager) and report the &quot; _
+            &amp; &quot;problem at https://github.com/Hermes34-dev/LibreStats/issues&quot;, _
+            16, &quot;LibreStats&quot;
+    End If
+End Sub
+</script:module>

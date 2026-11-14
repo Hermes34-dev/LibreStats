@@ -16,7 +16,7 @@
             <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
             <node oor:name="Submenu">
               <node oor:name="m01" oor:op="replace">
-                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?outliers</value></prop>
+                <prop oor:name="URL" oor:type="xs:string"><value>macro:///LibreStats.Menu.Run(&quot;outliers&quot;)</value></prop>
                 <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Outliers...</value></prop>
                 <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
                 <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
@@ -26,13 +26,13 @@
                 <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
                 <node oor:name="Submenu">
               <node oor:name="m01" oor:op="replace">
-                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?missingDiagnose</value></prop>
+                <prop oor:name="URL" oor:type="xs:string"><value>macro:///LibreStats.Menu.Run(&quot;missingDiagnose&quot;)</value></prop>
                 <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Diagnostics...</value></prop>
                 <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
                 <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
               </node>
               <node oor:name="m02" oor:op="replace">
-                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?missingImpute</value></prop>
+                <prop oor:name="URL" oor:type="xs:string"><value>macro:///LibreStats.Menu.Run(&quot;missingImpute&quot;)</value></prop>
                 <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Impute Missing Values...</value></prop>
                 <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
                 <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
@@ -44,19 +44,19 @@
                 <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
                 <node oor:name="Submenu">
               <node oor:name="m01" oor:op="replace">
-                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?transform</value></prop>
+                <prop oor:name="URL" oor:type="xs:string"><value>macro:///LibreStats.Menu.Run(&quot;transform&quot;)</value></prop>
                 <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Transform...</value></prop>
                 <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
                 <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
               </node>
               <node oor:name="m02" oor:op="replace">
-                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?scale</value></prop>
+                <prop oor:name="URL" oor:type="xs:string"><value>macro:///LibreStats.Menu.Run(&quot;scale&quot;)</value></prop>
                 <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Scale...</value></prop>
                 <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
                 <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
               </node>
               <node oor:name="m03" oor:op="replace">
-                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?logratio</value></prop>
+                <prop oor:name="URL" oor:type="xs:string"><value>macro:///LibreStats.Menu.Run(&quot;logratio&quot;)</value></prop>
                 <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Compositional Log-ratios...</value></prop>
                 <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
                 <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
@@ -68,31 +68,31 @@
                 <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
                 <node oor:name="Submenu">
               <node oor:name="m01" oor:op="replace">
-                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?dummies</value></prop>
+                <prop oor:name="URL" oor:type="xs:string"><value>macro:///LibreStats.Menu.Run(&quot;dummies&quot;)</value></prop>
                 <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Dummy Variables...</value></prop>
                 <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
                 <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
               </node>
               <node oor:name="m02" oor:op="replace">
-                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?presence</value></prop>
+                <prop oor:name="URL" oor:type="xs:string"><value>macro:///LibreStats.Menu.Run(&quot;presence&quot;)</value></prop>
                 <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Presence/Absence...</value></prop>
                 <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
                 <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
               </node>
               <node oor:name="m03" oor:op="replace">
-                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?bins</value></prop>
+                <prop oor:name="URL" oor:type="xs:string"><value>macro:///LibreStats.Menu.Run(&quot;bins&quot;)</value></prop>
                 <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Discretize into Bins...</value></prop>
                 <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
                 <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
               </node>
               <node oor:name="m04" oor:op="replace">
-                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?recode</value></prop>
+                <prop oor:name="URL" oor:type="xs:string"><value>macro:///LibreStats.Menu.Run(&quot;recode&quot;)</value></prop>
                 <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Recode Categories...</value></prop>
                 <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
                 <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
               </node>
               <node oor:name="m05" oor:op="replace">
-                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?ranks</value></prop>
+                <prop oor:name="URL" oor:type="xs:string"><value>macro:///LibreStats.Menu.Run(&quot;ranks&quot;)</value></prop>
                 <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Ranks and Normal Scores...</value></prop>
                 <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
                 <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
@@ -106,19 +106,19 @@
             <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
             <node oor:name="Submenu">
               <node oor:name="m01" oor:op="replace">
-                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?histogram</value></prop>
+                <prop oor:name="URL" oor:type="xs:string"><value>macro:///LibreStats.Menu.Run(&quot;histogram&quot;)</value></prop>
                 <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Histogram...</value></prop>
                 <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
                 <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
               </node>
               <node oor:name="m02" oor:op="replace">
-                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?qq</value></prop>
+                <prop oor:name="URL" oor:type="xs:string"><value>macro:///LibreStats.Menu.Run(&quot;qq&quot;)</value></prop>
                 <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Normal Q-Q Plot...</value></prop>
                 <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
                 <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
               </node>
               <node oor:name="m03" oor:op="replace">
-                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?surface</value></prop>
+                <prop oor:name="URL" oor:type="xs:string"><value>macro:///LibreStats.Menu.Run(&quot;surface&quot;)</value></prop>
                 <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">3D Surface Plot...</value></prop>
                 <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
                 <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
@@ -130,13 +130,13 @@
             <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
             <node oor:name="Submenu">
               <node oor:name="m01" oor:op="replace">
-                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?normality</value></prop>
+                <prop oor:name="URL" oor:type="xs:string"><value>macro:///LibreStats.Menu.Run(&quot;normality&quot;)</value></prop>
                 <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Normality (Shapiro-Wilk)...</value></prop>
                 <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
                 <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
               </node>
               <node oor:name="m02" oor:op="replace">
-                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?variances</value></prop>
+                <prop oor:name="URL" oor:type="xs:string"><value>macro:///LibreStats.Menu.Run(&quot;variances&quot;)</value></prop>
                 <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Equal Variances (Levene / Brown-Forsythe)...</value></prop>
                 <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
                 <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
@@ -152,19 +152,19 @@
                 <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
                 <node oor:name="Submenu">
               <node oor:name="m01" oor:op="replace">
-                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?ttestOne</value></prop>
+                <prop oor:name="URL" oor:type="xs:string"><value>macro:///LibreStats.Menu.Run(&quot;ttestOne&quot;)</value></prop>
                 <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">One-Sample t-Test...</value></prop>
                 <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
                 <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
               </node>
               <node oor:name="m02" oor:op="replace">
-                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?ttestWelch</value></prop>
+                <prop oor:name="URL" oor:type="xs:string"><value>macro:///LibreStats.Menu.Run(&quot;ttestWelch&quot;)</value></prop>
                 <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Welch's t-Test (Two Samples)...</value></prop>
                 <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
                 <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
               </node>
               <node oor:name="m03" oor:op="replace">
-                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?ttestPaired</value></prop>
+                <prop oor:name="URL" oor:type="xs:string"><value>macro:///LibreStats.Menu.Run(&quot;ttestPaired&quot;)</value></prop>
                 <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Paired t-Test...</value></prop>
                 <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
                 <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
@@ -176,19 +176,19 @@
                 <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
                 <node oor:name="Submenu">
               <node oor:name="m01" oor:op="replace">
-                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?anovaOneWay</value></prop>
+                <prop oor:name="URL" oor:type="xs:string"><value>macro:///LibreStats.Menu.Run(&quot;anovaOneWay&quot;)</value></prop>
                 <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">One-Way ANOVA...</value></prop>
                 <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
                 <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
               </node>
               <node oor:name="m02" oor:op="replace">
-                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?anovaWelch</value></prop>
+                <prop oor:name="URL" oor:type="xs:string"><value>macro:///LibreStats.Menu.Run(&quot;anovaWelch&quot;)</value></prop>
                 <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Welch's ANOVA...</value></prop>
                 <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
                 <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
               </node>
               <node oor:name="m03" oor:op="replace">
-                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?anovaRM</value></prop>
+                <prop oor:name="URL" oor:type="xs:string"><value>macro:///LibreStats.Menu.Run(&quot;anovaRM&quot;)</value></prop>
                 <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Repeated-Measures ANOVA...</value></prop>
                 <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
                 <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
@@ -200,25 +200,25 @@
                 <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
                 <node oor:name="Submenu">
               <node oor:name="m01" oor:op="replace">
-                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?posthocTukey</value></prop>
+                <prop oor:name="URL" oor:type="xs:string"><value>macro:///LibreStats.Menu.Run(&quot;posthocTukey&quot;)</value></prop>
                 <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Tukey HSD...</value></prop>
                 <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
                 <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
               </node>
               <node oor:name="m02" oor:op="replace">
-                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?posthocGamesHowell</value></prop>
+                <prop oor:name="URL" oor:type="xs:string"><value>macro:///LibreStats.Menu.Run(&quot;posthocGamesHowell&quot;)</value></prop>
                 <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Games-Howell...</value></prop>
                 <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
                 <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
               </node>
               <node oor:name="m03" oor:op="replace">
-                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?posthocDunnett</value></prop>
+                <prop oor:name="URL" oor:type="xs:string"><value>macro:///LibreStats.Menu.Run(&quot;posthocDunnett&quot;)</value></prop>
                 <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Dunnett (Each Group vs Control)...</value></prop>
                 <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
                 <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
               </node>
               <node oor:name="m04" oor:op="replace">
-                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?posthocDunn</value></prop>
+                <prop oor:name="URL" oor:type="xs:string"><value>macro:///LibreStats.Menu.Run(&quot;posthocDunn&quot;)</value></prop>
                 <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Dunn (after Kruskal-Wallis)...</value></prop>
                 <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
                 <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
@@ -240,19 +240,19 @@
                     <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
                     <node oor:name="Submenu">
                       <node oor:name="m01" oor:op="replace">
-                        <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?doeFull</value></prop>
+                        <prop oor:name="URL" oor:type="xs:string"><value>macro:///LibreStats.Menu.Run(&quot;doeFull&quot;)</value></prop>
                         <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Full Factorial (2 Levels)...</value></prop>
                         <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
                         <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
                       </node>
                       <node oor:name="m02" oor:op="replace">
-                        <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?doeFractional</value></prop>
+                        <prop oor:name="URL" oor:type="xs:string"><value>macro:///LibreStats.Menu.Run(&quot;doeFractional&quot;)</value></prop>
                         <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Fractional Factorial 2^(k-p)...</value></prop>
                         <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
                         <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
                       </node>
                       <node oor:name="m03" oor:op="replace">
-                        <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?doePlackettBurman</value></prop>
+                        <prop oor:name="URL" oor:type="xs:string"><value>macro:///LibreStats.Menu.Run(&quot;doePlackettBurman&quot;)</value></prop>
                         <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Plackett-Burman...</value></prop>
                         <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
                         <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
@@ -264,19 +264,19 @@
                     <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
                     <node oor:name="Submenu">
                       <node oor:name="m01" oor:op="replace">
-                        <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?doeCCD</value></prop>
+                        <prop oor:name="URL" oor:type="xs:string"><value>macro:///LibreStats.Menu.Run(&quot;doeCCD&quot;)</value></prop>
                         <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Central Composite (CCD)...</value></prop>
                         <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
                         <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
                       </node>
                       <node oor:name="m02" oor:op="replace">
-                        <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?doeBoxBehnken</value></prop>
+                        <prop oor:name="URL" oor:type="xs:string"><value>macro:///LibreStats.Menu.Run(&quot;doeBoxBehnken&quot;)</value></prop>
                         <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Box-Behnken...</value></prop>
                         <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
                         <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
                       </node>
                       <node oor:name="m03" oor:op="replace">
-                        <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?doeCCCD</value></prop>
+                        <prop oor:name="URL" oor:type="xs:string"><value>macro:///LibreStats.Menu.Run(&quot;doeCCCD&quot;)</value></prop>
                         <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">CCCD (Prieto et al.)...</value></prop>
                         <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
                         <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
@@ -286,13 +286,13 @@
                 </node>
               </node>
               <node oor:name="m02" oor:op="replace">
-                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?doeAnalyseScreening</value></prop>
+                <prop oor:name="URL" oor:type="xs:string"><value>macro:///LibreStats.Menu.Run(&quot;doeAnalyseScreening&quot;)</value></prop>
                 <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Analyse Screening Design...</value></prop>
                 <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
                 <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
               </node>
               <node oor:name="m03" oor:op="replace">
-                <prop oor:name="URL" oor:type="xs:string"><value>service:org.librestats.Handler?doeAnalyseRSM</value></prop>
+                <prop oor:name="URL" oor:type="xs:string"><value>macro:///LibreStats.Menu.Run(&quot;doeAnalyseRSM&quot;)</value></prop>
                 <prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Analyse Response Surface Design...</value></prop>
                 <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
                 <prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>

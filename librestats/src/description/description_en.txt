@@ -1,0 +1,3 @@
+Statistics package for LibreOffice Calc, written in pure Python (no numpy or scipy needed). Adds a LibreStats menu with dialog-driven tools: outliers, missing data and imputation, transformations and scaling, coding of variables, histograms, Q-Q and 3D surface plots, normality and equal-variance checks, t-tests, ANOVA and post hoc tests, and design of experiments with screening and response surface analysis. Each analysis writes a report sheet with the settings, results and method references.
+
+On Linux, LibreOffice's Python support must be installed (e.g. libreoffice-script-provider-python on Debian/Ubuntu, libreoffice-pyuno on Fedora/openSUSE).

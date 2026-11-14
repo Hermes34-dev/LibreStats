@@ -189,7 +189,7 @@ def run_histogram(doc, opts):
             sheet = cell_range.getSpreadsheet()
             col, row = addr.EndColumn + 2, addr.StartRow
             target = sheet.getCellRangeByPosition(col, row, col + 1, row + len(rows) - 1)
-            if target.queryContentCells(1 | 2 | 4 | 16).getCount():
+            if not calc.is_empty(target):
                 raise calc.RangeError("The cells to the right of the input range are not "
                                       "empty. Clear them or choose 'New sheet'.")
         else:

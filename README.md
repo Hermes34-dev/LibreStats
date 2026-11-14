@@ -10,7 +10,7 @@ LibreStats adds a **LibreStats** menu to Calc with dialog-driven statistical too
 
 The first module is **Data Preparation**: outlier detection, missing-data diagnostics and imputation, transformations and scaling, compositional log-ratios, and coding and recoding of variables. The second, **Data Visualization**, draws charts with Calc's own chart engine (a histogram and a normal Q-Q plot), plus a 3D surface plot drawn as an SVG picture, since Calc has no surface chart. **Assumption Checks** tests normality (Shapiro-Wilk) and equality of variances (Levene / Brown-Forsythe) before groups are compared. **Comparison Tests** compares means: one-sample, Welch and paired t-tests, one-way, Welch and repeated-measures ANOVA, and post hoc tests (Tukey HSD, Games-Howell, Dunnett, Dunn). **DOE / RSM** creates experimental designs: two-level screening designs (full and fractional factorials, Plackett-Burman) and response surface designs (central composite, Box-Behnken), and analyses the results: screening experiments (effects, aliases, Lenth's method, curvature check, Pareto chart and half-normal plot) and response surface experiments (quadratic model, stationary point, optimum, response map and 3D surface).
 
-> **Status:** early development (v0.23.0). Developed and tested on Linux with LibreOffice 26.8. Not yet tested on Windows or macOS.
+> **Status:** early development (v0.23.0). Developed on Linux with LibreOffice 26.8; the automated test suite also passes on LibreOffice 24.2 to 26.2. Not yet tested on Windows or macOS.
 
 ---
 
@@ -46,10 +46,10 @@ See **[documentation.md](documentation.md)** for the full user guide: every dial
 
 ## Requirements
 
-- **LibreOffice 26.8 or newer** (enforced by the extension)
+- **LibreOffice 24.2 or newer** (enforced by the extension). Tested with the LibreOffice packages of Ubuntu 24.04 and 26.04, Debian 13, Fedora 44, openSUSE Tumbleweed and Arch. Debian 12 ships 7.4, which is too old: use the Flatpak from Flathub or the packages from libreoffice.org.
 - **LibreOffice's Python scripting support.**
   - **Windows and macOS:** included in the official installers; nothing to do.
-  - **Linux:** distribution packages often ship it separately. If the extension won't install or the LibreStats menu does nothing, install it and restart LibreOffice:
+  - **Linux:** distribution packages often ship it separately. Without it, LibreStats still installs, but choosing any LibreStats menu item shows *"LibreStats needs LibreOffice's Python support, which is not installed"*. Install the package below and restart LibreOffice:
 
     | Distribution | Package |
     |---|---|
@@ -101,14 +101,20 @@ Restart LibreOffice after every update, because it caches Python modules.
 ```
 project_python_calc/
 ├── README.md
+├── RELEASING.md                    # how to publish a release and its update feed
 ├── documentation.md                # user guide
+├── docs/update.xml                 # update feed, served by GitHub Pages (from the first release)
 ├── libreoffice-dev-setup.md        # development environment setup (Distrobox, LO 26.8 + SDK)
 └── librestats/
-    ├── build.sh                    # zips src/ into build/librestats.oxt
+    ├── build.sh                    # builds build/librestats.oxt, update.xml and SHA256SUMS
     ├── src/                        # contents of the extension
     │   ├── META-INF/manifest.xml
-    │   ├── description.xml         # id org.librestats, version, LO >= 26.8
-    │   ├── Addons.xcu              # LibreStats menu
+    │   ├── description.xml         # id, version, publisher, LO >= 24.2, update URL
+    │   ├── description/            # text shown in the Extension Manager
+    │   ├── icons/librestats.png    # Extension Manager icon (from tools/make_icon.py)
+    │   ├── Addons.xcu              # LibreStats menu (each item calls basic/LibreStats Menu.Run)
+    │   ├── basic/LibreStats/       # Basic entry point: explains a missing Python runtime
+    │   ├── librestats.components   # passive registration of the Python component
     │   ├── librestats_ui.py        # UNO component: menu commands and macro interface
     │   └── pythonpath/librestats/  # the package (on sys.path automatically)
     │       ├── distributions.py    # t, chi-square, F, normal, studentized range, Dunnett
@@ -133,7 +139,8 @@ project_python_calc/
     │       ├── *_dialog.py, dialogs.py   # dialogs
     │       └── calc.py             # Calc helpers
     ├── tests/                      # unit tests and headless integration test
-    └── tools/                      # Dixon and fractional-factorial table generators, Little's test cross-check
+    └── tools/                      # Dixon and fractional-factorial table generators, Little's test
+                                    # cross-check, icon generator (needs Pillow, dev only)
 ```
 
 The statistical modules (`distributions`, `linalg`, `outliers`, `missing`, `transform`, `compositional`, `coding`, `histogram`, `qq`, `surface`, `doe`, `screening`, `rsm`, `assumptions`, `compare`, `posthoc`) contain no LibreOffice code. You can import and test them with any Python 3.

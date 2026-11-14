@@ -2,6 +2,10 @@
 
 Run with LibreOffice's Python after installing the extension:
     /opt/libreoffice26.8/program/python tests/test_extension.py
+
+To test another LibreOffice build in a throwaway profile, set LIBRESTATS_SOFFICE to its
+program/soffice and LIBRESTATS_PROFILE to a file:// URL (the extension must be installed
+there first: unopkg add -env:UserInstallation=<same URL> build/librestats.oxt).
 """
 
 import csv
@@ -19,7 +23,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
                                 "pythonpath"))
 from librestats import assumptions, compare, compositional, posthoc, qq, transform  # noqa: E402  (pure Python, for expected values)
 
-SOFFICE = "/opt/libreoffice26.8/program/soffice"
+SOFFICE = os.environ.get("LIBRESTATS_SOFFICE", "/opt/libreoffice26.8/program/soffice")
+PROFILE = os.environ.get("LIBRESTATS_PROFILE")  # -env:UserInstallation URL, or None
 PIPE = "librestats_test"
 HIGHLIGHT = 0xFFCC99
 IMPUTED = 0xCCE5FF
@@ -1316,9 +1321,39 @@ def load_rows():
         return [r[1:] for r in csv.reader(f)][1:]
 
 
+def check_menu_urls():
+    """Every menu item goes through the Basic entry point (which explains a missing Python
+    runtime) with a command the handler knows: an unknown command would do nothing."""
+    import re
+    src = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src")
+    sys.path.insert(0, src)
+    import librestats_ui
+    with open(os.path.join(src, "Addons.xcu"), encoding="utf-8") as f:
+        urls = re.findall(r'oor:name="URL" oor:type="xs:string"><value>([^<]*)</value>', f.read())
+    pattern = re.compile(r'macro:///LibreStats\.Menu\.Run\(&quot;(\w+)&quot;\)$')
+    commands = [m.group(1) for m in map(pattern.match, urls) if m]
+    check(len(urls) > 30 and len(commands) == len(urls),
+          f"All {len(urls)} menu URLs call LibreStats.Menu.Run")
+    unknown = sorted(set(commands) - set(librestats_ui.COMMANDS))
+    check(not unknown, f"Menu commands known to the handler (unknown: {unknown})")
+    check(len(set(commands)) == len(commands), "No menu command appears twice")
+
+
+def check_menu_macro(smgr, ctx, doc):
+    """The Basic entry point of the menu runs and reaches the Python handler."""
+    helper = smgr.createInstanceWithContext("com.sun.star.frame.DispatchHelper", ctx)
+    frame = doc.CurrentController.Frame
+    ok = helper.executeDispatch(frame, 'macro:///LibreStats.Menu.Run("outliers")', "", 0, ())
+    missing = helper.executeDispatch(frame, 'macro:///LibreStats.Menu.NoSuchSub("x")', "", 0, ())
+    check(ok is not None and ok.State == 1 and (missing is None or missing.State != 1),
+          "Menu macro LibreStats.Menu.Run dispatches (cancelled dialog)")
+
+
 def main():
-    office = subprocess.Popen([SOFFICE, "--headless", "--invisible", "--nologo", "--norestore",
-                               f"--accept=pipe,name={PIPE};urp;"], start_new_session=True)
+    profile = [f"-env:UserInstallation={PROFILE}"] if PROFILE else []
+    office = subprocess.Popen([SOFFICE, *profile, "--headless", "--invisible", "--nologo",
+                               "--norestore", f"--accept=pipe,name={PIPE};urp;"],
+                              start_new_session=True)
     desktop = None
     try:
         ctx = connect()
@@ -1331,6 +1366,7 @@ def main():
             (PropertyValue(Name="nodepath",
                            Value="/org.openoffice.Office.Addons/AddonUI/OfficeMenuBar"),))
         check(menus.hasByName("org.librestats.menu"), "LibreStats menu registered")
+        check_menu_urls()
 
         desktop = smgr.createInstanceWithContext("com.sun.star.frame.Desktop", ctx)
         doc = desktop.loadComponentFromURL("private:factory/scalc", "_blank", 0,
@@ -1378,6 +1414,7 @@ def main():
         doc.CurrentController.select(data.getCellRangeByName("A1"))
         handler.trigger("outliers")
         check(doc.Sheets.getCount() == sheets_before, "Menu command (cancelled dialog) ran")
+        check_menu_macro(smgr, ctx, doc)
 
         doc.close(True)
 

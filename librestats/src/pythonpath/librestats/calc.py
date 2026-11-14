@@ -138,6 +138,13 @@ def highlight_cells(doc, sheet, cells, color):
     ranges.CellBackColor = color
 
 
+def is_empty(cell_range):
+    """True if no cell in the range holds a value, text or formula.
+    Not queryContentCells(): in LibreOffice 24.2 it returns neighbouring filled cells
+    for an empty range."""
+    return all(v == "" for row in cell_range.getFormulaArray() for v in row)
+
+
 def used_data(cell_range):
     """getDataArray() without trailing rows that are completely empty
     (e.g. when whole columns are selected)."""

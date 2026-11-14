@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Passive registration: installing the extension does not need LibreOffice's Python
+     support; the Python loader is only started when a LibreStats command first runs. -->
+<components xmlns="http://openoffice.org/2010/uno-components">
+  <component loader="com.sun.star.loader.Python" uri="librestats_ui.py">
+    <implementation name="org.librestats.HandlerImpl">
+      <service name="org.librestats.Handler"/>
+    </implementation>
+  </component>
+</components>

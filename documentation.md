@@ -1,6 +1,6 @@
 # LibreStats Documentation
 
-User guide for **LibreStats 0.8.0**, a statistics extension for LibreOffice Calc (26.8 or newer).
+User guide for **LibreStats 0.23.0**, a statistics extension for LibreOffice Calc (24.2 or newer).
 
 ## Contents
 
@@ -1286,7 +1286,7 @@ def flag_outliers(*args):
 - **Performance:** pure Python is slower than compiled libraries. Data-preparation tools handle typical datasets (thousands of rows) easily; MICE with many variables, imputations and iterations takes longer.
 - **DOE / RSM is new and still being tested.** The designs and analyses are checked against published examples (NIST, Montgomery, Box & Hunter, Box & Behnken) and statsmodels, but the module has had little use on real experiments so far. Check the design summary before running an experiment, and report anything unexpected.
 - **DOE / RSM scope:** two-level screening designs and central composite / Box-Behnken / CCCD designs only (no definitive screening, Doehlert, mixture or optimal designs yet). Factors with text levels are possible in screening designs only. Each response is analysed on its own: there is no simultaneous optimisation of several responses (desirability) yet. Response maps and 3D surfaces show two factors at a time, with the others fixed (at the optimum, the centre or chosen values), and at most 3 factor pairs are drawn (with 4 or more factors, the 3 with the largest predicted range).
-- **Platforms:** developed and tested on Linux with LibreOffice 26.8; not yet tested on Windows or macOS.
+- **Platforms:** developed on Linux with LibreOffice 26.8; the automated test suite also passes on LibreOffice 24.2 to 26.2. Not yet tested on Windows or macOS.
 
 ---
 
